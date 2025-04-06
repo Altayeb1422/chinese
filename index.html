@@ -358,8 +358,7 @@
              addLookupHistory(word);
 
              // *** UPDATED SYSTEM PROMPT FOR 4 EXAMPLES ***
-             const system_prompt = `You are a Chinese language tutor helping a learner learn Chinese USING Chinese. Respond ONLY in Simplified Mandarin Chinese characters and the requested Pinyin. ABSOLUTELY NO ENGLISH (except for this instruction).
-Please explain the Chinese word/phrase provided by the user help me explain these words and sentences in chinese, use chinese to learn chinese`;
+             const system_prompt = `请用中文解析这句话：‘您可以侮辱我的人格’，要求：逐词解释、整句含义、使用场景、类似表达，并用中文教中文，保持口语化讲解和结构化排版。`;
              const user_prompt = `请解释这个词语或短语: "${word}"`;
 
              try {
@@ -507,7 +506,7 @@ Please explain the Chinese word/phrase provided by the user help me explain thes
 
              console.log("尝试生成包含以下单词的故事:", wordsToInclude);
 
-             const system_prompt = `You are a helpful assistant creating short, simple stories in **Simplified Chinese** for a language learner (around HSK 3-4 level). The story should be engaging and naturally incorporate the provided Chinese words. Keep the story concise (around 50-150 characters). Respond ONLY with the story text, nothing else.`;
+             const system_prompt = `You are a helpful assistant creating stories in **Simplified Chinese** for a language learner (around HSK 4-5 level) focused on spoken language style. The story should be engaging and naturally incorporate the provided Chinese words. Keep the story concise (around 50-1000 words). Respond ONLY with the story text, nothing else.`;
              const user_prompt = `Please write a short story in Simplified Chinese for a language learner, naturally including these words if possible: ${wordsToInclude.join('、')}`;
 
              try {
