@@ -359,15 +359,7 @@
 
              // *** UPDATED SYSTEM PROMPT FOR 4 EXAMPLES ***
              const system_prompt = `You are a Chinese language tutor helping a learner learn Chinese USING Chinese. Respond ONLY in Simplified Mandarin Chinese characters and the requested Pinyin. ABSOLUTELY NO ENGLISH (except for this instruction).
-Please explain the Chinese word/phrase provided by the user.
-Provide the response using ONLY these exact headings and formats where possible:
-1. 拼音: (Provide accurate Pinyin with tone marks ONLY)
-2. 意思: (Provide a concise definition using Mandarin vocabulary up to HSK 5 level)
-3. 例子: (Provide EXACTLY 4 distinct, useful example sentences using the word/phrase. Use bullet points. Use vocabulary and grammar up to HSK 5 level for clarity.)
-4. 句子解释: (For EACH of the 4 example sentences above, explain the overall meaning of the sentence using bullet points in the format "- [解释]: ...")
-5. 深入理解: (Provide deeper insights such as nuances, usage tips, cultural context, or common mistakes. Present as natural paragraphs or bullet points.)
-
-IMPORTANT: Use ONLY Simplified Mandarin Chinese for the explanation. Ensure EXACTLY 4 examples and their corresponding explanations are provided under sections 3 and 4. If a section isn't applicable, state "此项不适用" or provide related info.`;
+Please explain the Chinese word/phrase provided by the user help me explain these words and sentences in chinese, use chinese to learn chinese`;
              const user_prompt = `请解释这个词语或短语: "${word}"`;
 
              try {
