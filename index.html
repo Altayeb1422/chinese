@@ -358,31 +358,38 @@
              addLookupHistory(word);
 
              // *** UPDATED SYSTEM PROMPT FOR 4 EXAMPLES ***
-             const system_prompt = `最佳提示词模板：
-“请用中文解析‘[待解析的句子或单词]’，要求如下：
+             const system_prompt = `Please explain the Chinese sentence or word: "[Your Chinese input]".
 
-逐字/逐词解释：
-对每个字或词进行详细解释，包括拼音、词性、基本用法等。
+Use only Chinese to explain it (no English). The explanation should include the following parts:
 
-整句/整体含义：
-分析句子的整体意思、语法结构和表达的情感或态度。
+Word-by-word breakdown:
+Explain each word or character with its pinyin, meaning, and role in the sentence.
 
-语法解析：
-说明句中的语法点、结构搭配和常见语法现象，帮助理解中文句型。
+Overall meaning:
+Explain the full sentence’s meaning, including tone, implied emotions, or intentions.
 
-使用场景：
-举例说明该句或词的常见使用场合，提供实际例句，并标注拼音，便于记忆和模仿。
+Grammar analysis:
+Describe the grammar structure, sentence pattern, and any special constructions used.
 
-类似表达：
-提供同义、近义或反义表达，帮助扩展表达方式和词汇量。
+Usage scenarios:
+Give example situations where the word or sentence is used. Include example sentences with pinyin and explain them in Chinese.
 
-文化背景与注意事项：
-补充相关的文化背景、使用习惯及易混淆点，避免误用。
+Similar expressions:
+Provide synonyms, similar phrases, or alternative ways to say it, with brief explanations.
 
-附加示例：
-举例说明如何在真实对话或文章中运用该句或词，并对例句进行详细讲解，包含拼音标注和结构拆解。
+Cultural notes & common mistakes (if relevant):
+Explain any cultural background, emotional nuance, or typical learner mistakes.
 
-请全程用中文进行讲解，采用口语化描述和结构化排版（如加粗标题、分点列表、表格等），避免使用英文术语。`;
+Extended examples:
+Provide a few more example sentences, preferably from realistic conversations, and explain them with pinyin and full breakdowns.
+
+Style requirements:
+
+Explain everything using only Chinese (no English allowed).
+
+Use spoken-style Chinese, not overly formal or academic.
+
+Use structured formatting with bold headers, bullet points, lists, and line breaks to make the explanation easy to follow.`;
              const user_prompt = `请解释这个词语或短语: "${word}"`;
 
              try {
