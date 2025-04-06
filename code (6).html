@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>沉浸式中文学习平台 (单文件增强版)</title>
+    <!-- Include Three.js via CDN (Optional) -->
+    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script> -->
+
+    <style>
+        /* --- ALL CSS from previous version --- */
+        :root {
+            --primary-color: #4a90e2;
+            --secondary-color: #f5a623;
+            --background-color: #f8f9fa;
+            --content-background: rgba(255, 255, 255, 0.97);
+            --text-color: #333;
+            --light-gray: #e9ecef;
+            --medium-gray: #ced4da;
+            --dark-gray: #6c757d;
+            --success-color: #28a745;
+            --danger-color: #dc3545;
+            --info-color: #17a2b8;
+            --warning-color: #ffc107;
+            --border-radius: 8px;
+            --box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"; margin: 0; padding: 0; background-color: var(--background-color); color: var(--text-color); line-height: 1.6; min-height: 100vh; display: flex; flex-direction: column; }
+        #threejs-background { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; overflow: hidden; }
+        .app-container { max-width: 1100px; margin: 20px auto; padding: 0; background-color: var(--content-background); border-radius: var(--border-radius); box-shadow: var(--box-shadow); flex-grow: 1; z-index: 1; display: flex; flex-direction: column; overflow: hidden; }
+        .main-nav { display: flex; justify-content: center; background-color: var(--primary-color); padding: 10px 0; border-radius: var(--border-radius) var(--border-radius) 0 0; }
+        .main-nav button { background-color: transparent; border: none; color: white; text-decoration: none; padding: 12px 25px; margin: 0 5px; font-size: 16px; font-weight: 500; border-radius: 5px; transition: background-color 0.3s ease; cursor: pointer; }
+        .main-nav button:hover, .main-nav button.active { background-color: rgba(255, 255, 255, 0.2); }
+        #page-content { flex-grow: 1; padding: 25px 30px; }
+        .module-content { display: none; animation: fadeIn 0.5s ease; }
+        .module-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .module-content h2 { color: var(--primary-color); border-bottom: 2px solid var(--light-gray); padding-bottom: 10px; margin-bottom: 25px; margin-top: 0; }
+        button { padding: 10px 20px; font-size: 16px; border: none; border-radius: var(--border-radius); cursor: pointer; transition: background-color 0.3s ease, box-shadow 0.2s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        button.primary { background-color: var(--primary-color); color: white; }
+        button.primary:hover { background-color: #3a7ac8; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        button:disabled { background-color: var(--medium-gray); cursor: not-allowed; box-shadow: none; color: #6c757d;}
+        input[type="text"], textarea { padding: 12px; font-size: 16px; border: 1px solid var(--medium-gray); border-radius: var(--border-radius); width: 100%; box-sizing: border-box; }
+        input[type="text"]:focus, textarea:focus { border-color: var(--primary-color); outline: none; box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.2); }
+        .loading-indicator { text-align: center; padding: 30px; color: var(--dark-gray); font-style: italic; font-size: 1.1em; }
+        .error-message { color: var(--danger-color); font-weight: bold; text-align: center; padding: 15px; background-color: #f8d7da; border: 1px solid #f5c6cb; border-radius: var(--border-radius); margin-top: 15px; }
+        .info-message { color: var(--info-color); padding: 15px; background-color: #d1ecf1; border: 1px solid #bee5eb; border-radius: var(--border-radius); margin-top: 15px; }
+        .hidden { display: none !important; }
+        #lookup-input-area { display: flex; gap: 10px; margin-bottom: 20px; }
+        #lookup-input { flex-grow: 1; }
+        #lookup-result-container { margin-top: 20px; padding: 25px; background-color: #ffffff; border: 1px solid var(--light-gray); border-radius: var(--border-radius); min-height: 100px; }
+        #lookup-result h3 { margin-top: 20px; margin-bottom: 10px; color: var(--primary-color); font-size: 1.15em; font-weight: 600; border-bottom: 1px solid var(--light-gray); padding-bottom: 5px; }
+        #lookup-result h3:first-child { margin-top: 0; }
+        #lookup-result ul { padding-left: 25px; margin-top: 8px; list-style: disc; }
+        #lookup-result li { margin-bottom: 10px; line-height: 1.7; } /* Added line-height */
+        #lookup-result p { margin-bottom: 12px; line-height: 1.7; }
+        #lookup-result div > p { margin-bottom: 12px; line-height: 1.7; } /* Target paragraphs in 深入理解 */
+        #lookup-history { margin-top: 30px; }
+        #history-list button { background: none; border: none; color: var(--primary-color); cursor: pointer; padding: 5px; font-size: 1em; }
+        #history-list button:hover { text-decoration: underline; }
+        #save-word-button { margin-top: 15px; background-color: var(--success-color); color: white; }
+        #save-word-button:hover { background-color: #218838; }
+        #quiz-container { background-color: #fff; padding: 25px; border-radius: var(--border-radius); border: 1px solid var(--light-gray); }
+        #quiz-area { margin-bottom: 20px; }
+        .quiz-question { font-weight: bold; font-size: 1.2em; margin-bottom: 20px; }
+        .quiz-options button { display: block; width: 100%; text-align: left; padding: 12px 18px; margin-bottom: 10px; background-color: var(--light-gray); border: 1px solid #ddd; }
+        .quiz-options button:hover:not(:disabled) { background-color: #dcdcdc; }
+        .quiz-options button.correct { background-color: #d4edda !important; border-color: #c3e6cb; font-weight: bold; color: #155724 !important; }
+        .quiz-options button.incorrect { background-color: #f8d7da !important; border-color: #f5c6cb; color: #721c24 !important; }
+        .quiz-feedback { margin-top: 20px; padding: 15px; border-radius: var(--border-radius); text-align: center; font-weight: bold; }
+        .feedback-correct { background-color: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+        .feedback-incorrect { background-color: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+        #quiz-controls { margin-top: 20px; display: flex; justify-content: center; gap: 20px; }
+        #quiz-summary { margin-top: 20px; padding: 15px; background-color: var(--light-gray); border-radius: var(--border-radius); }
+        #reading-container { }
+        .reading-passage { background-color: #fff; padding: 25px; border: 1px solid var(--light-gray); border-radius: var(--border-radius); line-height: 1.8; font-size: 1.1em; margin-bottom: 20px; }
+        .highlight { background-color: var(--secondary-color); color: white; padding: 0.1em 0.4em; border-radius: 4px; cursor: pointer; transition: background-color 0.2s; }
+        .highlight:hover { background-color: #e0951a; }
+        .reading-comprehension { margin-top: 30px; padding-top: 20px; border-top: 1px solid var(--light-gray); }
+        #definition-popup { position: absolute; background: #333; color: white; border: 1px solid #555; padding: 10px 15px; border-radius: 5px; box-shadow: 0 3px 8px rgba(0,0,0,0.3); z-index: 100; max-width: 300px; font-size: 0.95em; }
+        #progress-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .stat-item { background-color: var(--light-gray); padding: 20px; border-radius: var(--border-radius); text-align: center; }
+        .stat-item strong { display: block; font-size: 1.8em; color: var(--primary-color); margin-bottom: 8px; }
+        .stat-item span { font-size: 1.1em; color: var(--dark-gray); }
+        #improvement-suggestions { margin-top: 20px; padding: 20px; background-color: #e2f3ff; border: 1px solid #b8dffc; border-radius: var(--border-radius); }
+        #progress-chart-container { margin-top: 30px; min-height: 150px; background-color: #fff; padding: 20px; border-radius: var(--border-radius); border: 1px solid var(--light-gray); text-align: center; color: var(--dark-gray);}
+        #settings-container { }
+        .settings-group { margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid var(--light-gray); }
+        .settings-group h3 { margin-top: 0; margin-bottom: 15px; color: var(--dark-gray); }
+        .settings-group label { display: block; margin-bottom: 15px; font-weight: 500; }
+        .settings-group select, .settings-group input[type="number"], .settings-group input[type="checkbox"] { margin-left: 10px; padding: 8px; border-radius: 5px; border: 1px solid var(--medium-gray); }
+        #feedback-form textarea { height: 100px; margin-top: 10px; }
+        #feedback-form button { margin-top: 10px; }
+        footer { text-align: center; padding: 20px 30px; font-size: 0.9em; color: var(--dark-gray); border-top: 1px solid var(--light-gray); background-color: var(--content-background); border-radius: 0 0 var(--border-radius) var(--border-radius); }
+        footer p { margin: 5px 0; }
+        footer a { color: var(--primary-color); text-decoration: none; }
+        footer a:hover { text-decoration: underline; }
+        footer strong { color: var(--danger-color); }
+        @media (max-width: 768px) { .app-container { margin: 10px; border-radius: 0; } .main-nav { flex-wrap: wrap; padding: 5px 0; border-radius: 0; } .main-nav button { padding: 10px 15px; font-size: 14px; margin: 3px; } #page-content { padding: 15px; } #lookup-input-area { flex-direction: column; gap: 10px; } #progress-stats { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <!-- <div id="threejs-background"></div> -->
+
+    <div class="app-container">
+        <nav class="main-nav">
+            <button data-target="lookup-section" class="nav-button active">首页 (查词)</button>
+            <button data-target="quiz-section" class="nav-button">词汇测验</button>
+            <button data-target="reading-section" class="nav-button">阅读与故事</button>
+            <button data-target="progress-section" class="nav-button">学习进度</button>
+            <button data-target="settings-section" class="nav-button">设置</button>
+        </nav>
+
+        <main id="page-content">
+            <!-- Word Lookup Module -->
+            <section id="lookup-section" class="module-content active">
+                <h2>查词与解释</h2>
+                <div id="lookup-input-area">
+                    <input type="text" id="lookup-input" placeholder="输入中文词语或短语...">
+                    <button id="lookup-button" class="primary">查询</button>
+                </div>
+                <div id="lookup-result-container" class="hidden"></div>
+                <div id="lookup-history">
+                    <h3>查询历史</h3>
+                    <ul id="history-list"><li>暂无查询历史</li></ul>
+                </div>
+            </section>
+
+            <!-- Quiz Module -->
+            <section id="quiz-section" class="module-content">
+                <h2>词汇测验 (SRS)</h2>
+                <div id="quiz-container">
+                    <div id="quiz-setup">
+                        <p>准备好开始测验了吗？将根据您的学习列表和复习计划选择题目。</p>
+                        <button id="start-quiz-button" class="primary">开始测验</button>
+                    </div>
+                    <div id="quiz-area" class="hidden">
+                        <div id="quiz-question" class="quiz-question"></div>
+                        <div id="quiz-options" class="quiz-options"></div>
+                        <div id="quiz-feedback" class="quiz-feedback hidden"></div>
+                    </div>
+                    <div id="quiz-controls" class="hidden">
+                        <button id="next-question-button" class="primary">下一题</button>
+                    </div>
+                    <div id="quiz-summary" class="hidden">
+                        <h3>本次测验总结</h3>
+                        <p id="summary-text"></p>
+                        <button id="quiz-done-button" class="primary">完成</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Reading Module -->
+            <section id="reading-section" class="module-content">
+                 <h2>阅读与故事</h2>
+                 <div id="reading-container">
+                     <button id="generate-story-button" class="primary">生成新故事 (基于已学词汇)</button>
+                     <div id="reading-passage-area" style="margin-top: 20px;">
+                         <p>请点击按钮生成阅读材料，或先去“首页”学习一些单词。</p>
+                         <!-- Reading passage will be loaded here -->
+                     </div>
+                     <!-- Comprehension Quiz Placeholder -->
+                     <!-- <div id="reading-comprehension-area" class="reading-comprehension hidden"> ... </div> -->
+                 </div>
+                 <div id="definition-popup" class="hidden">Definition goes here</div>
+            </section>
+
+            <!-- Progress Tracking Module -->
+            <section id="progress-section" class="module-content">
+                 <h2>学习进度</h2>
+                 <div id="progress-stats">
+                     <div class="stat-item"><strong>已学单词</strong><span id="stat-total-words">0</span></div>
+                     <div class="stat-item"><strong>今日到期复习</strong><span id="stat-today-reviews">0</span></div>
+                     <div class="stat-item"><strong>综合准确率</strong><span id="stat-quiz-accuracy">N/A</span></div>
+                     <div class="stat-item"><strong>学习连胜</strong><span id="stat-streak">0 天</span></div>
+                 </div>
+                 <div id="progress-chart-container">图表功能开发中</div>
+                 <div id="improvement-suggestions">
+                     <h4>提升建议</h4>
+                     <p id="suggestion-text">请先开始学习和测验以获取建议。</p>
+                 </div>
+            </section>
+
+            <!-- Settings Module -->
+            <section id="settings-section" class="module-content">
+                 <h2>设置与反馈</h2>
+                 <div id="settings-container">
+                     <div class="settings-group">
+                         <h3>测验设置</h3>
+                         <label>每次测验题目数量: <input type="number" id="setting-quiz-count" min="5" max="50" value="10"></label>
+                         <label>复习提醒: <input type="checkbox" id="setting-notifications" checked> 启用</label>
+                     </div>
+                      <div class="settings-group">
+                          <h3>外观</h3>
+                          <label>主题: <select id="setting-theme"><option value="light">明亮</option><option value="dark" disabled>深色 (开发中)</option></select></label>
+                      </div>
+                      <div id="feedback-section" class="settings-group">
+                          <h3>反馈与建议</h3>
+                          <p>我们重视您的意见！请告诉我们您的想法或遇到的问题。</p>
+                          <form id="feedback-form"><textarea id="feedback-text" placeholder="请输入您的反馈..." required></textarea><button type="submit" class="primary">提交反馈</button></form>
+                      </div>
+                       <div class="settings-group">
+                           <h3>数据管理</h3>
+                           <button id="export-data-button" class="secondary" style="background-color: var(--info-color); color: white;">导出学习数据 (JSON)</button>
+                           <button id="reset-data-button" style="background-color: var(--danger-color); color: white; margin-left: 10px;">重置所有学习数据 (危险!)</button>
+                       </div>
+                 </div>
+            </section>
+        </main>
+
+        <footer>
+             <p>基于 DeepSeek API 构建 | <strong style="color: var(--danger-color);">警告: API 密钥嵌入在前端代码中，请勿在公共环境部署!</strong></p>
+             <p>版本 1.1 (单文件/增强)</p>
+        </footer>
+    </div>
+
+    <!-- Embedded JavaScript -->
+    <script>
+        // --- Constants and Configuration ---
+        const API_KEY = 'sk-0c497ee28264453fa11c45fb862c7482'; // !!! SECURITY RISK !!! DO NOT EXPOSE PUBLICLY
+        const DEEPSEEK_API_URL = 'https://api.deepseek.com/chat/completions';
+        const APP_STATE_KEY = 'chineseAppProgressSingleFile_v1_1'; // Updated key
+
+        // --- Default State ---
+        const defaultState = {
+            currentView: 'lookup-section', currentWordData: null, learnedWords: {}, lookupHistory: [],
+            quizStats: { correct: 0, incorrect: 0, history: [], streak: 0, lastQuizDate: null }, readingHistory: [],
+            settings: { quizCount: 10, notifications: true, theme: 'light' }
+        };
+
+        // --- State Management ---
+        let appState = {};
+        function loadState() { /* ... (same as previous version, checks APP_STATE_KEY) ... */
+            try {
+                const savedState = localStorage.getItem(APP_STATE_KEY);
+                appState = savedState ? { ...defaultState, ...JSON.parse(savedState) } : { ...defaultState };
+                if (savedState) {
+                    const parsed = JSON.parse(savedState);
+                    appState.settings = { ...defaultState.settings, ...(parsed.settings || {}) };
+                    appState.quizStats = { ...defaultState.quizStats, ...(parsed.quizStats || {}) };
+                    appState.learnedWords = parsed.learnedWords || {};
+                    appState.lookupHistory = parsed.lookupHistory || [];
+                }
+                if (typeof appState.learnedWords !== 'object' || appState.learnedWords === null) { appState.learnedWords = {}; }
+                console.log("状态已加载:", appState);
+            } catch (e) { console.error("加载状态失败:", e); appState = { ...defaultState }; }
+        }
+        function saveState() { /* ... (same as previous version) ... */
+            try { localStorage.setItem(APP_STATE_KEY, JSON.stringify(appState)); }
+            catch (e) { console.error("保存状态失败:", e); alert("无法保存进度，localStorage 可能已满或被禁用。"); }
+        }
+        function getState() { return appState; }
+        function updateState(newState) { appState = { ...appState, ...newState }; saveState(); }
+
+        // --- API Interaction ---
+        async function callDeepSeekAPI(system_prompt, user_prompt, model = "deepseek-chat", max_tokens = 600, temperature = 0.6) { // Added parameters
+             console.log(`发送 API 请求 (Model: ${model}, Max Tokens: ${max_tokens})...`);
+             try {
+                 const response = await fetch(DEEPSEEK_API_URL, {
+                     method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${API_KEY}` }, // SECURITY RISK
+                     body: JSON.stringify({ model: model, messages: [{ "role": "system", "content": system_prompt },{ "role": "user", "content": user_prompt }], max_tokens: max_tokens, temperature: temperature })
+                 });
+                 if (!response.ok) { const errorData = await response.json().catch(() => ({})); throw new Error(`API 请求失败 (状态 ${response.status}). ${errorData.error?.message || '无法获取详细错误信息。'}`); }
+                 const data = await response.json();
+                 if (data.choices?.[0]?.message?.content) { return data.choices[0].message.content.trim(); }
+                 else { throw new Error("API 返回的响应格式不正确或内容为空。"); }
+             } catch (error) { console.error("调用 DeepSeek API 时出错:", error); throw error; }
+         }
+
+        // --- Formatting & Parsing ---
+        function formatExplanationHTML(text) { /* ... (same as previous version) ... */
+            let html = ''; const lines = text.split('\n').filter(line => line.trim() !== '');
+             lines.forEach(line => {
+                 if (line.startsWith('1. 拼音:')) { html += `<h3>${line.substring(0, line.indexOf(':')+1)}</h3><p>${line.substring(line.indexOf(':')+1).trim()}</p>`; }
+                 else if (line.startsWith('2. 意思:')) { html += `<h3>${line.substring(0, line.indexOf(':')+1)}</h3><p>${line.substring(line.indexOf(':')+1).trim()}</p>`; }
+                 else if (line.startsWith('3. 例子:')) { html += `<h3>${line.substring(0, line.indexOf(':')+1)}</h3><ul>`; }
+                 else if (line.startsWith('4. 句子解释:')) { if (html.endsWith('</ul>')) { } else { html += '</ul>'; } html += `<h3>${line.substring(0, line.indexOf(':')+1)}</h3><ul>`; }
+                 else if (line.startsWith('5. 深入理解:')) { if (html.endsWith('</ul>')) { } else { html += '</ul>'; } html += `<h3>${line.substring(0, line.indexOf(':')+1)}</h3><div>`; }
+                 else if (line.startsWith('- 示例句子') || line.startsWith('- [解释]:') || (line.startsWith('-') && html.includes('<ul>') && !html.includes('<div>'))) { html += `<li>${line.substring(line.indexOf('-')+1).trim()}</li>`; }
+                 else if (html.includes('深入理解:</h3><div>')) { if (!html.endsWith('</div>')) { html += `<p>${line.trim()}</p>`; } else { html = html.slice(0, -6); html += `<p>${line.trim()}</p></div>`; } }
+                 else if (html.endsWith('</ul>')) { html += `<li>${line.trim()}</li>`; }
+                 else { html += `<p>${line.trim()}</p>`; }
+             });
+             let openUl = (html.match(/<ul>/g) || []).length; let closeUl = (html.match(/<\/ul>/g) || []).length; html += '</ul>'.repeat(openUl - closeUl);
+             let openDiv = (html.match(/<div>/g) || []).length; let closeDiv = (html.match(/<\/div>/g) || []).length; html += '</div>'.repeat(openDiv - closeDiv);
+             html = html.replace(/<h3>.*?<\/h3>\s*<p>此项不适用<\/p>/gi, '<p><em>此部分不适用或无特别内容。</em></p>');
+             html = html.replace(/<h3>.*?<\/h3>\s*<div>\s*(<p>此项不适用<\/p>)?\s*<\/div>/gi, '<p><em>此部分不适用或无特别内容。</em></p>');
+             html = html.replace(/<h3>.*?<\/h3>\s*<ul>\s*<li>此项不适用<\/li>\s*<\/ul>/gi, '<p><em>此部分不适用或无特别内容。</em></p>');
+             html = html.replace(/<h3>.*?<\/h3>\s*<ul>\s*<\/ul>/gi, '');
+             return html || '<p>无法解析返回的内容格式。</p>';
+        }
+        function parseExplanationData(text, word) { /* ... (same as previous version) ... */
+            const data = { word: word, pinyin: '', definition: '', examples: [], deepDive: '', fullExplanation: text };
+             try {
+                 const pinyinMatch = text.match(/1\. 拼音:\s*(.*)/); if (pinyinMatch) data.pinyin = pinyinMatch[1].trim();
+                 const defMatch = text.match(/2\. 意思:\s*([\s\S]*?)(?=\n3\. 例子:|\n4\. 句子解释:|\n5\. 深入理解:|$)/); if (defMatch) data.definition = defMatch[1].trim();
+                 const exMatch = text.match(/3\. 例子:\s*([\s\S]*?)(?=\n4\. 句子解释:|\n5\. 深入理解:|$)/);
+                 if (exMatch) { data.examples = exMatch[1].split('\n').map(line => line.replace(/-\s*(示例句子\d*:)?\s*/, '').trim()).filter(line => line.length > 0); }
+                 const deepMatch = text.match(/5\. 深入理解:\s*([\s\S]*?)$/); if (deepMatch) data.deepDive = deepMatch[1].trim();
+             } catch(e) { console.error("Error parsing explanation text:", e); }
+             return data;
+        }
+
+        // --- SRS Logic ---
+        function calculateNextReview(srsData, quality) { /* ... (same as previous version) ... */
+            if (!srsData) return { nextReview: new Date().toISOString().split('T')[0], interval: 1, easeFactor: 2.5 };
+             let { interval = 1, easeFactor = 2.5 } = srsData;
+             if (quality < 3) { interval = 1; easeFactor = Math.max(1.3, easeFactor - 0.2); }
+             else { interval = (interval <= 1) ? 6 : Math.ceil(interval * easeFactor); easeFactor = easeFactor + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02)); easeFactor = Math.max(1.3, easeFactor); }
+             interval = Math.min(interval, 365); const now = new Date(); const nextReviewDate = new Date(now.setDate(now.getDate() + Math.ceil(interval)));
+             return { nextReview: nextReviewDate.toISOString().split('T')[0], interval: interval, easeFactor: easeFactor };
+        }
+
+        // --- Utility Functions ---
+        function showLoading(containerElement) { containerElement.innerHTML = '<div class="loading-indicator">加载中...</div>'; containerElement.classList.remove('hidden'); }
+        function displayError(containerElement, message) { containerElement.innerHTML = `<div class="error-message">${message}</div>`; containerElement.classList.remove('hidden'); }
+        function displayInfo(containerElement, message) { containerElement.innerHTML = `<div class="info-message">${message}</div>`; containerElement.classList.remove('hidden'); }
+
+        // --- Navigation ---
+        function showModule(moduleId) { /* ... (same as previous version, calls updateProgressPage, resetQuizUI) ... */
+            console.log(`切换到模块: ${moduleId}`);
+            document.querySelectorAll('.module-content').forEach(module => module.classList.remove('active'));
+            document.querySelectorAll('.nav-button').forEach(button => button.classList.remove('active'));
+            const activeModule = document.getElementById(moduleId);
+            if (activeModule) {
+                activeModule.classList.add('active');
+                const activeButton = document.querySelector(`.nav-button[data-target="${moduleId}"]`);
+                if (activeButton) { activeButton.classList.add('active'); }
+                updateState({ currentView: moduleId });
+                 if (moduleId === 'progress-section') { updateProgressPage(); }
+                 if (moduleId === 'quiz-section') { resetQuizUI(); }
+                 if (moduleId === 'settings-section') { loadSettingsValues(); } // Load settings values when opening settings
+            } else {
+                console.error(`模块未找到: ${moduleId}, 显示默认模块`);
+                document.getElementById('lookup-section').classList.add('active');
+                document.querySelector('.nav-button[data-target="lookup-section"]').classList.add('active');
+                updateState({ currentView: 'lookup-section' });
+            }
+        }
+
+        // --- Word Lookup Module Logic ---
+        function setupLookupModule() { /* ... (same as previous version) ... */
+            const lookupInput = document.getElementById('lookup-input');
+            const lookupButton = document.getElementById('lookup-button');
+            lookupButton.addEventListener('click', handleWordLookup);
+            lookupInput.addEventListener('keypress', (event) => { if (event.key === 'Enter') handleWordLookup(); });
+            renderLookupHistory();
+        }
+        async function handleWordLookup() { // *** MODIFIED PROMPT ***
+            const lookupInput = document.getElementById('lookup-input');
+             const lookupButton = document.getElementById('lookup-button');
+             const resultContainer = document.getElementById('lookup-result-container');
+             const word = lookupInput.value.trim();
+             if (!word) { displayInfo(resultContainer, "请输入要查询的词语。"); return; }
+
+             lookupButton.disabled = true; lookupButton.textContent = "查询中...";
+             showLoading(resultContainer);
+             addLookupHistory(word);
+
+             // *** UPDATED SYSTEM PROMPT FOR 4 EXAMPLES ***
+             const system_prompt = `You are a Chinese language tutor helping a learner learn Chinese USING Chinese. Respond ONLY in Simplified Mandarin Chinese characters and the requested Pinyin. ABSOLUTELY NO ENGLISH (except for this instruction).
+Please explain the Chinese word/phrase provided by the user.
+Provide the response using ONLY these exact headings and formats where possible:
+1. 拼音: (Provide accurate Pinyin with tone marks ONLY)
+2. 意思: (Provide a concise definition using Mandarin vocabulary up to HSK 5 level)
+3. 例子: (Provide EXACTLY 4 distinct, useful example sentences using the word/phrase. Use bullet points. Use vocabulary and grammar up to HSK 5 level for clarity.)
+4. 句子解释: (For EACH of the 4 example sentences above, explain the overall meaning of the sentence using bullet points in the format "- [解释]: ...")
+5. 深入理解: (Provide deeper insights such as nuances, usage tips, cultural context, or common mistakes. Present as natural paragraphs or bullet points.)
+
+IMPORTANT: Use ONLY Simplified Mandarin Chinese for the explanation. Ensure EXACTLY 4 examples and their corresponding explanations are provided under sections 3 and 4. If a section isn't applicable, state "此项不适用" or provide related info.`;
+             const user_prompt = `请解释这个词语或短语: "${word}"`;
+
+             try {
+                 // Increase max_tokens slightly for potentially longer response with 4 examples
+                 const explanationText = await callDeepSeekAPI(system_prompt, user_prompt, "deepseek-chat", 800, 0.6);
+                 const formattedHTML = formatExplanationHTML(explanationText);
+                 resultContainer.innerHTML = `<div id="lookup-result">${formattedHTML}</div>`;
+                 const parsedData = parseExplanationData(explanationText, word);
+                 updateState({ currentWordData: parsedData });
+
+                 if (!getState().learnedWords[word]) {
+                    const saveButton = document.createElement('button');
+                    saveButton.id = 'save-word-button'; saveButton.textContent = `添加到学习列表 (${word})`;
+                    saveButton.onclick = () => saveCurrentWord(); resultContainer.appendChild(saveButton);
+                 } else {
+                     const alreadySaved = document.createElement('p'); alreadySaved.textContent = `“${word}” 已在您的学习列表中。`;
+                     alreadySaved.style.cssText = 'margin-top: 15px; color: var(--success-color); font-style: italic;'; // Added style
+                     resultContainer.appendChild(alreadySaved);
+                 }
+                 resultContainer.classList.remove('hidden');
+             } catch (error) { displayError(resultContainer, `查询失败: ${error.message}`); }
+             finally { lookupButton.disabled = false; lookupButton.textContent = "查询"; lookupInput.select(); }
+        }
+        function addLookupHistory(word) { /* ... (same as previous version) ... */
+            let history = getState().lookupHistory || []; history = history.filter(item => item !== word); history.unshift(word);
+            if (history.length > 15) { history.pop(); } updateState({ lookupHistory: history }); renderLookupHistory();
+        }
+        function renderLookupHistory() { /* ... (same as previous version) ... */
+            const historyList = document.getElementById('history-list'); const history = getState().lookupHistory || [];
+            historyList.innerHTML = ''; if (history.length === 0) { historyList.innerHTML = '<li>暂无查询历史</li>'; return; }
+            history.forEach(word => { const li = document.createElement('li'); const button = document.createElement('button'); button.textContent = word; button.onclick = () => { document.getElementById('lookup-input').value = word; handleWordLookup(); }; li.appendChild(button); historyList.appendChild(li); });
+        }
+        function saveCurrentWord() { /* ... (same as previous version) ... */
+            const currentData = getState().currentWordData;
+            if (currentData && currentData.word) { if (!getState().learnedWords[currentData.word]) { addLearnedWord(currentData); alert(`“${currentData.word}” 已添加到学习列表！`); const saveButton = document.getElementById('save-word-button'); if (saveButton) { saveButton.textContent = `“${currentData.word}” 已添加`; saveButton.disabled = true; } } else { alert(`“${currentData.word}” 已在您的学习列表中。`); } }
+            else { alert(`无法保存，未找到当前查询的单词数据。`); }
+        }
+        function addLearnedWord(wordData) { /* ... (same as previous version) ... */
+            if (!wordData || !wordData.word) return; const word = wordData.word; if (!appState.learnedWords[word]) { appState.learnedWords[word] = { pinyin: wordData.pinyin || '', definition: wordData.definition || '', examples: wordData.examples || [], srsLevel: 0, nextReview: new Date().toISOString().split('T')[0], interval: 1, easeFactor: 2.5, addedDate: new Date().toISOString().split('T')[0], notes: '', fullExplanation: wordData.fullExplanation || '' }; console.log(`单词 "${word}" 已添加到学习列表`); saveState(); } else { console.log(`单词 "${word}" 已存在于学习列表`); }
+        }
+
+        // --- Quiz Module Logic ---
+        let currentQuizWords = []; let currentQuestionIndex = 0; let correctAnswers = 0; let sessionWordUpdates = {}; let quizActive = false;
+        function setupQuizModule() { /* ... (same as previous version) ... */
+            const startButton = document.getElementById('start-quiz-button'); const nextButton = document.getElementById('next-question-button'); const doneButton = document.getElementById('quiz-done-button');
+            startButton.addEventListener('click', startQuiz); nextButton.addEventListener('click', loadNextQuestion); doneButton.addEventListener('click', resetQuizUI);
+        }
+        function resetQuizUI() { /* ... (same as previous version) ... */
+            document.getElementById('quiz-setup').classList.remove('hidden'); document.getElementById('quiz-area').classList.add('hidden'); document.getElementById('quiz-controls').classList.add('hidden'); document.getElementById('quiz-summary').classList.add('hidden'); document.getElementById('start-quiz-button').disabled = false; quizActive = false;
+        }
+        function startQuiz() { /* ... (same as previous version, uses settings.quizCount) ... */
+            const learnedWords = getState().learnedWords; const today = new Date().toISOString().split('T')[0];
+            const dueWords = Object.keys(learnedWords).filter(key => learnedWords[key].nextReview && learnedWords[key].nextReview <= today );
+            if (dueWords.length === 0) { alert("太棒了！今天没有需要复习的单词。\n您可以先去学习新单词，或稍后再试。"); return; }
+            const quizCount = getState().settings.quizCount || 10;
+            currentQuizWords = dueWords.sort(() => 0.5 - Math.random()).slice(0, quizCount);
+            if (currentQuizWords.length === 0) { alert("未能准备测验题目。"); return; }
+            console.log(`开始测验，题目数量: ${currentQuizWords.length}`, currentQuizWords);
+            currentQuestionIndex = 0; correctAnswers = 0; sessionWordUpdates = {}; quizActive = true;
+            document.getElementById('quiz-setup').classList.add('hidden'); document.getElementById('quiz-area').classList.remove('hidden'); document.getElementById('quiz-controls').classList.add('hidden'); document.getElementById('quiz-summary').classList.add('hidden');
+            loadQuestion(currentQuestionIndex);
+        }
+        function loadQuestion(index) { /* ... (same as previous version) ... */
+            const feedbackEl = document.getElementById('quiz-feedback'); const optionsEl = document.getElementById('quiz-options'); const questionEl = document.getElementById('quiz-question');
+            feedbackEl.classList.add('hidden'); feedbackEl.textContent = ''; optionsEl.innerHTML = '';
+            const wordKey = currentQuizWords[index]; const wordData = getState().learnedWords[wordKey];
+            if (!wordData) { console.error(`无法加载单词数据: ${wordKey}`); loadNextQuestion(); return; }
+            questionEl.textContent = `(${index + 1}/${currentQuizWords.length}) “${wordKey}” 的意思是？`;
+            const options = generateDefinitionOptions(wordKey, wordData.definition);
+            options.forEach(option => { const button = document.createElement('button'); button.textContent = option.text; button.onclick = () => handleAnswer(option.isCorrect, wordKey, button, optionsEl); optionsEl.appendChild(button); });
+        }
+        function generateDefinitionOptions(correctWord, correctDef) { /* ... (same as previous version) ... */
+            const learnedWords = getState().learnedWords; if (!correctDef || correctDef.trim() === '') correctDef = `(未找到 '${correctWord}' 的定义)`;
+            const otherWordsData = Object.entries(learnedWords).filter(([key, data]) => key !== correctWord && data.definition && data.definition.trim() !== '');
+            let wrongDefs = otherWordsData.map(([key, data]) => data.definition).filter(def => def !== correctDef); wrongDefs = [...new Set(wrongDefs)]; wrongDefs = wrongDefs.sort(() => 0.5 - Math.random()).slice(0, 3);
+            const options = [{ text: correctDef, isCorrect: true }]; wrongDefs.forEach(def => options.push({ text: def, isCorrect: false }));
+            while (options.length < 3 && options.length > 1) { options.push({ text: `(选项 ${options.length + 1})`, isCorrect: false }); }
+            return options.sort(() => 0.5 - Math.random());
+        }
+        function handleAnswer(isCorrect, wordKey, clickedButton, optionsContainer) { /* ... (same as previous version) ... */
+            if (!quizActive) return; optionsContainer.querySelectorAll('button').forEach(btn => btn.disabled = true);
+            const feedbackEl = document.getElementById('quiz-feedback'); feedbackEl.classList.remove('hidden', 'feedback-correct', 'feedback-incorrect');
+            optionsContainer.querySelectorAll('button').forEach(btn => { const btnIsCorrect = btn.textContent === getState().learnedWords[wordKey]?.definition; if (btn === clickedButton) { btn.classList.add(isCorrect ? 'correct' : 'incorrect'); } else if (btnIsCorrect && !isCorrect) { btn.classList.add('correct'); } });
+            const srsQuality = isCorrect ? 4 : 1; if (isCorrect) { feedbackEl.textContent = "正确！"; feedbackEl.classList.add('feedback-correct'); correctAnswers++; } else { feedbackEl.textContent = `错误。`; feedbackEl.classList.add('feedback-incorrect'); }
+            sessionWordUpdates[wordKey] = srsQuality; document.getElementById('quiz-controls').classList.remove('hidden');
+        }
+        function loadNextQuestion() { /* ... (same as previous version) ... */
+            if (!quizActive) return; currentQuestionIndex++; document.getElementById('quiz-controls').classList.add('hidden');
+            if (currentQuestionIndex < currentQuizWords.length) { loadQuestion(currentQuestionIndex); } else { endQuiz(); }
+        }
+        function endQuiz() { /* ... (same as previous version) ... */
+            quizActive = false; document.getElementById('quiz-area').classList.add('hidden'); document.getElementById('quiz-controls').classList.add('hidden');
+            const summaryEl = document.getElementById('quiz-summary'); summaryEl.classList.remove('hidden');
+            const totalQuestions = currentQuizWords.length; const accuracy = totalQuestions > 0 ? ((correctAnswers / totalQuestions) * 100).toFixed(0) : 0;
+            document.getElementById('summary-text').textContent = `测验完成！正确率: ${correctAnswers} / ${totalQuestions} (${accuracy}%)`;
+            applySrsUpdates(); updateQuizStatsHistory(correctAnswers, totalQuestions);
+        }
+        function applySrsUpdates() { /* ... (same as previous version) ... */
+            let state = getState(); let updated = false; const today = new Date().toISOString().split('T')[0];
+            for (const wordKey in sessionWordUpdates) { if (state.learnedWords[wordKey]) { const quality = sessionWordUpdates[wordKey]; const currentSrsData = { interval: state.learnedWords[wordKey].interval, easeFactor: state.learnedWords[wordKey].easeFactor }; const newSrsData = calculateNextReview(currentSrsData, quality); state.learnedWords[wordKey].nextReview = newSrsData.nextReview; state.learnedWords[wordKey].interval = newSrsData.interval; state.learnedWords[wordKey].easeFactor = newSrsData.easeFactor; state.learnedWords[wordKey].srsLevel = (state.learnedWords[wordKey].srsLevel || 0) + (quality >= 3 ? 1 : -1); state.learnedWords[wordKey].lastReviewDate = today; updated = true; } }
+            if (updated) { updateState(state); } sessionWordUpdates = {};
+        }
+        function updateQuizStatsHistory(correct, total) { /* ... (same as previous version) ... */
+            let stats = getState().quizStats; stats.correct += correct; stats.incorrect += (total - correct); stats.history = stats.history || []; stats.history.push({ date: new Date().toISOString(), correct: correct, total: total }); if(stats.history.length > 50) { stats.history.shift(); }
+            const today = new Date().toISOString().split('T')[0]; if (stats.lastQuizDate === today) { } else { const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1); if (stats.lastQuizDate === yesterday.toISOString().split('T')[0]) { stats.streak = (stats.streak || 0) + 1; } else { stats.streak = 1; } stats.lastQuizDate = today; }
+            updateState({ quizStats: stats });
+        }
+
+
+        // --- Reading Module Logic ---
+        function setupReadingModule() { // *** MODIFIED ***
+            const generateButton = document.getElementById('generate-story-button');
+            const passageArea = document.getElementById('reading-passage-area');
+            const popup = document.getElementById('definition-popup');
+
+            generateButton.addEventListener('click', generateStory); // Changed listener function
+
+            document.addEventListener('click', (event) => { // Hide popup listener
+                if (!popup.classList.contains('hidden') && !popup.contains(event.target) && !event.target.classList.contains('highlight')) {
+                    popup.classList.add('hidden');
+                }
+            }, true);
+        }
+
+        async function generateStory() { // *** NEW FUNCTION ***
+             const passageArea = document.getElementById('reading-passage-area');
+             const generateButton = document.getElementById('generate-story-button');
+             generateButton.disabled = true; generateButton.textContent = "生成中...";
+             showLoading(passageArea);
+
+             const learnedWordsMap = getState().learnedWords || {};
+             const learnedWordsList = Object.keys(learnedWordsMap);
+
+             if (learnedWordsList.length === 0) {
+                 displayInfo(passageArea, "您的学习列表是空的。请先通过“首页”查词并添加一些单词，然后才能生成相关的故事。");
+                 generateButton.disabled = false; generateButton.textContent = "生成新故事";
+                 return;
+             }
+
+             // Select words to include (e.g., 1 to 5 words, prioritize recent/due?)
+             // Simple approach: take a random sample
+             const wordsToInclude = learnedWordsList
+                                     .sort(() => 0.5 - Math.random()) // Shuffle
+                                     .slice(0, Math.min(learnedWordsList.length, 5)); // Take up to 5
+
+             console.log("尝试生成包含以下单词的故事:", wordsToInclude);
+
+             const system_prompt = `You are a helpful assistant creating short, simple stories in **Simplified Chinese** for a language learner (around HSK 3-4 level). The story should be engaging and naturally incorporate the provided Chinese words. Keep the story concise (around 50-150 characters). Respond ONLY with the story text, nothing else.`;
+             const user_prompt = `Please write a short story in Simplified Chinese for a language learner, naturally including these words if possible: ${wordsToInclude.join('、')}`;
+
+             try {
+                 // Use a model good for creative text, maybe adjust tokens/temp
+                 const storyText = await callDeepSeekAPI(system_prompt, user_prompt, "deepseek-chat", 250, 0.8);
+
+                 // Highlight the learned words within the generated story
+                 const highlightedStory = highlightLearnedWords(storyText, wordsToInclude);
+
+                 passageArea.innerHTML = `<div class="reading-passage">${highlightedStory}</div>`;
+                 addHighlightListeners(passageArea); // Make highlights clickable
+
+             } catch (error) {
+                 console.error("生成故事失败:", error);
+                 displayError(passageArea, `生成故事时出错: ${error.message}`);
+             } finally {
+                 generateButton.disabled = false; generateButton.textContent = "生成新故事";
+             }
+         }
+
+         function highlightLearnedWords(text, wordsToHighlight) { // *** NEW HELPER ***
+            let highlightedText = text;
+             // Sort words by length descending to match longer words first (e.g., "图书馆" before "图书")
+             wordsToHighlight.sort((a, b) => b.length - a.length);
+
+             wordsToHighlight.forEach(word => {
+                 // Use regex to find the word, avoiding replacement within existing HTML tags
+                 // This regex is basic and might need refinement for complex cases.
+                 // It looks for the word not preceded by ">" and not followed by "<" (simple check for outside tags)
+                 // Added check to ensure it's not already inside a highlight span
+                 const regex = new RegExp(`(?<!<span class="highlight">)${escapeRegExp(word)}(?!<\/span>)`, 'g');
+                 highlightedText = highlightedText.replace(regex, `<span class="highlight">${word}</span>`);
+             });
+            return highlightedText;
+         }
+
+        function escapeRegExp(string) { // Helper for regex construction
+             return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& means the whole matched string
+         }
+
+        function addHighlightListeners(container) { /* ... (same as previous version) ... */
+             container.querySelectorAll('.highlight').forEach(span => {
+                 span.addEventListener('click', (event) => { event.stopPropagation(); const word = span.textContent; showDefinitionPopup(word, event); });
+             });
+         }
+        function showDefinitionPopup(word, event) { /* ... (same as previous version) ... */
+            const popup = document.getElementById('definition-popup'); const wordData = getState().learnedWords[word]; let content = `<strong>${word}</strong><br>`;
+            if(wordData) { content += `拼音: ${wordData.pinyin || 'N/A'}<br>意思: ${wordData.definition || 'N/A'}`; } else { content += `(未在学习列表中找到)`; } popup.innerHTML = content;
+            const rect = event.target.getBoundingClientRect(); popup.style.left = `${window.scrollX + rect.left}px`; popup.style.top = `${window.scrollY + rect.bottom + 5}px`; popup.classList.remove('hidden');
+         }
+
+
+        // --- Progress Module Logic ---
+        function setupProgressModule() { /* ... (same as previous version) ... */ }
+        function updateProgressPage() { /* ... (same as previous version) ... */
+            console.log("更新进度页面..."); const state = getState(); const learnedWords = state.learnedWords || {}; const stats = state.quizStats || defaultState.quizStats;
+            const totalWords = Object.keys(learnedWords).length; const today = new Date().toISOString().split('T')[0]; const reviewsDue = Object.values(learnedWords).filter(w => w.nextReview && w.nextReview <= today).length; const totalQuizzed = stats.correct + stats.incorrect; const overallAccuracy = totalQuizzed > 0 ? ((stats.correct / totalQuizzed) * 100).toFixed(0) + '%' : 'N/A'; const streak = stats.streak || 0;
+            document.getElementById('stat-total-words').textContent = totalWords; document.getElementById('stat-today-reviews').textContent = reviewsDue; document.getElementById('stat-quiz-accuracy').textContent = overallAccuracy; document.getElementById('stat-streak').textContent = `${streak} 天`;
+            let suggestion = "开始学习和测验来追踪您的进度吧！"; if (totalWords > 0 && reviewsDue > 5) { suggestion = `今天有 ${reviewsDue} 个单词需要复习，安排时间完成吧！`; } else if (totalQuizzed > 10 && parseFloat(overallAccuracy) < 75) { suggestion = "您的测验准确率有提升空间，多复习易错词汇。"; } else if (streak > 3) { suggestion = `保持 ${streak} 天的学习连胜，真棒！继续加油！`; } document.getElementById('suggestion-text').textContent = suggestion;
+        }
+
+
+        // --- Settings Module Logic ---
+        function setupSettingsModule() { /* ... (same as previous version) ... */
+            // Load settings values initially
+            loadSettingsValues();
+            // Add listeners for settings changes
+             document.getElementById('setting-quiz-count').addEventListener('change', (e) => updateSetting('quizCount', parseInt(e.target.value)));
+             document.getElementById('setting-notifications').addEventListener('change', (e) => updateSetting('notifications', e.target.checked));
+             document.getElementById('setting-theme').addEventListener('change', (e) => updateSetting('theme', e.target.value));
+             document.getElementById('feedback-form').addEventListener('submit', handleFeedbackSubmit);
+             document.getElementById('export-data-button').addEventListener('click', exportData);
+             document.getElementById('reset-data-button').addEventListener('click', resetData);
+        }
+        function loadSettingsValues() { // *** NEW Function ***
+             const settings = getState().settings;
+             document.getElementById('setting-quiz-count').value = settings.quizCount || 10;
+             document.getElementById('setting-notifications').checked = settings.notifications !== false;
+             document.getElementById('setting-theme').value = settings.theme || 'light';
+         }
+        function updateSetting(key, value) { /* ... (same as previous version) ... */
+            let settings = getState().settings; settings[key] = value; updateState({ settings: settings }); console.log(`设置已更新: ${key}=${value}`); if (key === 'theme') applyTheme(value);
+        }
+        function handleFeedbackSubmit(event) { /* ... (same as previous version) ... */
+            event.preventDefault(); const text = document.getElementById('feedback-text').value; if (!text.trim()) { alert("请输入反馈内容。"); return; } console.log("提交反馈:", text); alert("感谢您的反馈！"); document.getElementById('feedback-text').value = '';
+        }
+        function exportData() { /* ... (same as previous version) ... */
+            try { const dataStr = JSON.stringify(getState(), null, 2); const blob = new Blob([dataStr], { type: "application/json" }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `chinese_learning_data_${new Date().toISOString().split('T')[0]}.json`; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url); alert("数据已导出为 JSON 文件。"); } catch (e) { console.error("导出数据失败:", e); alert("导出数据失败。"); }
+        }
+        function resetData() { /* ... (same as previous version) ... */
+            if (confirm("警告！这将清除您所有的学习进度、单词列表和设置。\n此操作无法撤销！\n\n您确定要重置所有数据吗？")) { localStorage.removeItem(APP_STATE_KEY); appState = { ...defaultState }; alert("所有数据已重置。页面将重新加载。"); window.location.reload(); }
+        }
+        function applyTheme(themeName) { /* ... (same as previous version) ... */
+             console.log(`应用主题: ${themeName}`); if (themeName === 'dark') { alert("深色主题正在开发中。"); document.getElementById('setting-theme').value = 'light'; updateSetting('theme', 'light'); }
+        }
+
+
+        // --- Initialization ---
+        document.addEventListener('DOMContentLoaded', () => { /* ... (same as previous version) ... */
+            console.log("应用初始化 (单文件增强版 v1.1)..."); loadState();
+            document.querySelectorAll('.nav-button').forEach(button => { button.addEventListener('click', () => { const targetId = button.getAttribute('data-target'); showModule(targetId); }); });
+            setupLookupModule(); setupQuizModule(); setupReadingModule(); setupProgressModule(); setupSettingsModule();
+            showModule(getState().currentView || 'lookup-section'); applyTheme(getState().settings.theme || 'light');
+            console.log("初始化完成。");
+        });
+
+    </script>
+</body>
+</html>
