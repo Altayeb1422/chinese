@@ -1,628 +1,878 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>沉浸式中文学习平台 (单文件增强版)</title>
-    <!-- Include Three.js via CDN (Optional) -->
-    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script> -->
-
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>汉语语境通 AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="importmap">
+{
+  "imports": {
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-dom/client": "https://aistudiocdn.com/react-dom@^19.2.0/client",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.29.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/"
+  }
+}
+</script>
     <style>
-        /* --- ALL CSS from previous version --- */
-        :root {
-            --primary-color: #4a90e2;
-            --secondary-color: #f5a623;
-            --background-color: #f8f9fa;
-            --content-background: rgba(255, 255, 255, 0.97);
-            --text-color: #333;
-            --light-gray: #e9ecef;
-            --medium-gray: #ced4da;
-            --dark-gray: #6c757d;
-            --success-color: #28a745;
-            --danger-color: #dc3545;
-            --info-color: #17a2b8;
-            --warning-color: #ffc107;
-            --border-radius: 8px;
-            --box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"; margin: 0; padding: 0; background-color: var(--background-color); color: var(--text-color); line-height: 1.6; min-height: 100vh; display: flex; flex-direction: column; }
-        #threejs-background { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; overflow: hidden; }
-        .app-container { max-width: 1100px; margin: 20px auto; padding: 0; background-color: var(--content-background); border-radius: var(--border-radius); box-shadow: var(--box-shadow); flex-grow: 1; z-index: 1; display: flex; flex-direction: column; overflow: hidden; }
-        .main-nav { display: flex; justify-content: center; background-color: var(--primary-color); padding: 10px 0; border-radius: var(--border-radius) var(--border-radius) 0 0; }
-        .main-nav button { background-color: transparent; border: none; color: white; text-decoration: none; padding: 12px 25px; margin: 0 5px; font-size: 16px; font-weight: 500; border-radius: 5px; transition: background-color 0.3s ease; cursor: pointer; }
-        .main-nav button:hover, .main-nav button.active { background-color: rgba(255, 255, 255, 0.2); }
-        #page-content { flex-grow: 1; padding: 25px 30px; }
-        .module-content { display: none; animation: fadeIn 0.5s ease; }
-        .module-content.active { display: block; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .module-content h2 { color: var(--primary-color); border-bottom: 2px solid var(--light-gray); padding-bottom: 10px; margin-bottom: 25px; margin-top: 0; }
-        button { padding: 10px 20px; font-size: 16px; border: none; border-radius: var(--border-radius); cursor: pointer; transition: background-color 0.3s ease, box-shadow 0.2s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        button.primary { background-color: var(--primary-color); color: white; }
-        button.primary:hover { background-color: #3a7ac8; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
-        button:disabled { background-color: var(--medium-gray); cursor: not-allowed; box-shadow: none; color: #6c757d;}
-        input[type="text"], textarea { padding: 12px; font-size: 16px; border: 1px solid var(--medium-gray); border-radius: var(--border-radius); width: 100%; box-sizing: border-box; }
-        input[type="text"]:focus, textarea:focus { border-color: var(--primary-color); outline: none; box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.2); }
-        .loading-indicator { text-align: center; padding: 30px; color: var(--dark-gray); font-style: italic; font-size: 1.1em; }
-        .error-message { color: var(--danger-color); font-weight: bold; text-align: center; padding: 15px; background-color: #f8d7da; border: 1px solid #f5c6cb; border-radius: var(--border-radius); margin-top: 15px; }
-        .info-message { color: var(--info-color); padding: 15px; background-color: #d1ecf1; border: 1px solid #bee5eb; border-radius: var(--border-radius); margin-top: 15px; }
-        .hidden { display: none !important; }
-        #lookup-input-area { display: flex; gap: 10px; margin-bottom: 20px; }
-        #lookup-input { flex-grow: 1; }
-        #lookup-result-container { margin-top: 20px; padding: 25px; background-color: #ffffff; border: 1px solid var(--light-gray); border-radius: var(--border-radius); min-height: 100px; }
-        #lookup-result h3 { margin-top: 20px; margin-bottom: 10px; color: var(--primary-color); font-size: 1.15em; font-weight: 600; border-bottom: 1px solid var(--light-gray); padding-bottom: 5px; }
-        #lookup-result h3:first-child { margin-top: 0; }
-        #lookup-result ul { padding-left: 25px; margin-top: 8px; list-style: disc; }
-        #lookup-result li { margin-bottom: 10px; line-height: 1.7; } /* Added line-height */
-        #lookup-result p { margin-bottom: 12px; line-height: 1.7; }
-        #lookup-result div > p { margin-bottom: 12px; line-height: 1.7; } /* Target paragraphs in 深入理解 */
-        #lookup-history { margin-top: 30px; }
-        #history-list button { background: none; border: none; color: var(--primary-color); cursor: pointer; padding: 5px; font-size: 1em; }
-        #history-list button:hover { text-decoration: underline; }
-        #save-word-button { margin-top: 15px; background-color: var(--success-color); color: white; }
-        #save-word-button:hover { background-color: #218838; }
-        #quiz-container { background-color: #fff; padding: 25px; border-radius: var(--border-radius); border: 1px solid var(--light-gray); }
-        #quiz-area { margin-bottom: 20px; }
-        .quiz-question { font-weight: bold; font-size: 1.2em; margin-bottom: 20px; }
-        .quiz-options button { display: block; width: 100%; text-align: left; padding: 12px 18px; margin-bottom: 10px; background-color: var(--light-gray); border: 1px solid #ddd; }
-        .quiz-options button:hover:not(:disabled) { background-color: #dcdcdc; }
-        .quiz-options button.correct { background-color: #d4edda !important; border-color: #c3e6cb; font-weight: bold; color: #155724 !important; }
-        .quiz-options button.incorrect { background-color: #f8d7da !important; border-color: #f5c6cb; color: #721c24 !important; }
-        .quiz-feedback { margin-top: 20px; padding: 15px; border-radius: var(--border-radius); text-align: center; font-weight: bold; }
-        .feedback-correct { background-color: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
-        .feedback-incorrect { background-color: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
-        #quiz-controls { margin-top: 20px; display: flex; justify-content: center; gap: 20px; }
-        #quiz-summary { margin-top: 20px; padding: 15px; background-color: var(--light-gray); border-radius: var(--border-radius); }
-        #reading-container { }
-        .reading-passage { background-color: #fff; padding: 25px; border: 1px solid var(--light-gray); border-radius: var(--border-radius); line-height: 1.8; font-size: 1.1em; margin-bottom: 20px; }
-        .highlight { background-color: var(--secondary-color); color: white; padding: 0.1em 0.4em; border-radius: 4px; cursor: pointer; transition: background-color 0.2s; }
-        .highlight:hover { background-color: #e0951a; }
-        .reading-comprehension { margin-top: 30px; padding-top: 20px; border-top: 1px solid var(--light-gray); }
-        #definition-popup { position: absolute; background: #333; color: white; border: 1px solid #555; padding: 10px 15px; border-radius: 5px; box-shadow: 0 3px 8px rgba(0,0,0,0.3); z-index: 100; max-width: 300px; font-size: 0.95em; }
-        #progress-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px; }
-        .stat-item { background-color: var(--light-gray); padding: 20px; border-radius: var(--border-radius); text-align: center; }
-        .stat-item strong { display: block; font-size: 1.8em; color: var(--primary-color); margin-bottom: 8px; }
-        .stat-item span { font-size: 1.1em; color: var(--dark-gray); }
-        #improvement-suggestions { margin-top: 20px; padding: 20px; background-color: #e2f3ff; border: 1px solid #b8dffc; border-radius: var(--border-radius); }
-        #progress-chart-container { margin-top: 30px; min-height: 150px; background-color: #fff; padding: 20px; border-radius: var(--border-radius); border: 1px solid var(--light-gray); text-align: center; color: var(--dark-gray);}
-        #settings-container { }
-        .settings-group { margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid var(--light-gray); }
-        .settings-group h3 { margin-top: 0; margin-bottom: 15px; color: var(--dark-gray); }
-        .settings-group label { display: block; margin-bottom: 15px; font-weight: 500; }
-        .settings-group select, .settings-group input[type="number"], .settings-group input[type="checkbox"] { margin-left: 10px; padding: 8px; border-radius: 5px; border: 1px solid var(--medium-gray); }
-        #feedback-form textarea { height: 100px; margin-top: 10px; }
-        #feedback-form button { margin-top: 10px; }
-        footer { text-align: center; padding: 20px 30px; font-size: 0.9em; color: var(--dark-gray); border-top: 1px solid var(--light-gray); background-color: var(--content-background); border-radius: 0 0 var(--border-radius) var(--border-radius); }
-        footer p { margin: 5px 0; }
-        footer a { color: var(--primary-color); text-decoration: none; }
-        footer a:hover { text-decoration: underline; }
-        footer strong { color: var(--danger-color); }
-        @media (max-width: 768px) { .app-container { margin: 10px; border-radius: 0; } .main-nav { flex-wrap: wrap; padding: 5px 0; border-radius: 0; } .main-nav button { padding: 10px 15px; font-size: 14px; margin: 3px; } #page-content { padding: 15px; } #lookup-input-area { flex-direction: column; gap: 10px; } #progress-stats { grid-template-columns: 1fr; } }
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      .animate-fadeIn {
+        animation: fadeIn 0.5s ease-out forwards;
+      }
+      .perspective {
+        perspective: 1000px;
+      }
+      .card-inner {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        transition: transform 0.6s;
+        transform-style: preserve-3d;
+      }
+      .card-flipped .card-inner {
+        transform: rotateY(180deg);
+      }
+      .card-front,
+      .card-back {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        -webkit-backface-visibility: hidden;
+        backface-visibility: hidden;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        padding: 1rem;
+        text-align: center;
+      }
+      .card-back {
+        transform: rotateY(180deg);
+      }
     </style>
-</head>
-<body>
-    <!-- <div id="threejs-background"></div> -->
+  </head>
+  <body class="bg-slate-950 text-slate-200">
+    <div id="root"></div>
+    <script type="module">
+      import React, { useState, useEffect, useCallback } from 'react';
+      import ReactDOM from 'react-dom/client';
+      import { GoogleGenAI, Type, Modality } from "@google/genai";
 
-    <div class="app-container">
-        <nav class="main-nav">
-            <button data-target="lookup-section" class="nav-button active">首页 (查词)</button>
-            <button data-target="quiz-section" class="nav-button">词汇测验</button>
-            <button data-target="reading-section" class="nav-button">阅读与故事</button>
-            <button data-target="progress-section" class="nav-button">学习进度</button>
-            <button data-target="settings-section" class="nav-button">设置</button>
-        </nav>
+      // --- START OF INLINED: utils/audioUtils.ts ---
+      let audioContext = null;
+      const getAudioContext = () => {
+          if (!audioContext) {
+              audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 24000 });
+          }
+          return audioContext;
+      };
 
-        <main id="page-content">
-            <!-- Word Lookup Module -->
-            <section id="lookup-section" class="module-content active">
-                <h2>查词与解释</h2>
-                <div id="lookup-input-area">
-                    <input type="text" id="lookup-input" placeholder="输入中文词语或短语...">
-                    <button id="lookup-button" class="primary">查询</button>
-                </div>
-                <div id="lookup-result-container" class="hidden"></div>
-                <div id="lookup-history">
-                    <h3>查询历史</h3>
-                    <ul id="history-list"><li>暂无查询历史</li></ul>
-                </div>
-            </section>
+      function decode(base64) {
+          const binaryString = window.atob(base64);
+          const len = binaryString.length;
+          const bytes = new Uint8Array(len);
+          for (let i = 0; i < len; i++) {
+              bytes[i] = binaryString.charCodeAt(i);
+          }
+          return bytes;
+      }
 
-            <!-- Quiz Module -->
-            <section id="quiz-section" class="module-content">
-                <h2>词汇测验 (SRS)</h2>
-                <div id="quiz-container">
-                    <div id="quiz-setup">
-                        <p>准备好开始测验了吗？将根据您的学习列表和复习计划选择题目。</p>
-                        <button id="start-quiz-button" class="primary">开始测验</button>
-                    </div>
-                    <div id="quiz-area" class="hidden">
-                        <div id="quiz-question" class="quiz-question"></div>
-                        <div id="quiz-options" class="quiz-options"></div>
-                        <div id="quiz-feedback" class="quiz-feedback hidden"></div>
-                    </div>
-                    <div id="quiz-controls" class="hidden">
-                        <button id="next-question-button" class="primary">下一题</button>
-                    </div>
-                    <div id="quiz-summary" class="hidden">
-                        <h3>本次测验总结</h3>
-                        <p id="summary-text"></p>
-                        <button id="quiz-done-button" class="primary">完成</button>
-                    </div>
-                </div>
-            </section>
+      async function decodeAudioData(data, ctx, sampleRate, numChannels) {
+          const dataInt16 = new Int16Array(data.buffer);
+          const frameCount = dataInt16.length / numChannels;
+          const buffer = ctx.createBuffer(numChannels, frameCount, sampleRate);
 
-            <!-- Reading Module -->
-            <section id="reading-section" class="module-content">
-                 <h2>阅读与故事</h2>
-                 <div id="reading-container">
-                     <button id="generate-story-button" class="primary">生成新故事 (基于已学词汇)</button>
-                     <div id="reading-passage-area" style="margin-top: 20px;">
-                         <p>请点击按钮生成阅读材料，或先去“首页”学习一些单词。</p>
-                         <!-- Reading passage will be loaded here -->
-                     </div>
-                     <!-- Comprehension Quiz Placeholder -->
-                     <!-- <div id="reading-comprehension-area" class="reading-comprehension hidden"> ... </div> -->
-                 </div>
-                 <div id="definition-popup" class="hidden">Definition goes here</div>
-            </section>
+          for (let channel = 0; channel < numChannels; channel++) {
+              const channelData = buffer.getChannelData(channel);
+              for (let i = 0; i < frameCount; i++) {
+                  channelData[i] = dataInt16[i * numChannels + channel] / 32768.0;
+              }
+          }
+          return buffer;
+      }
 
-            <!-- Progress Tracking Module -->
-            <section id="progress-section" class="module-content">
-                 <h2>学习进度</h2>
-                 <div id="progress-stats">
-                     <div class="stat-item"><strong>已学单词</strong><span id="stat-total-words">0</span></div>
-                     <div class="stat-item"><strong>今日到期复习</strong><span id="stat-today-reviews">0</span></div>
-                     <div class="stat-item"><strong>综合准确率</strong><span id="stat-quiz-accuracy">N/A</span></div>
-                     <div class="stat-item"><strong>学习连胜</strong><span id="stat-streak">0 天</span></div>
-                 </div>
-                 <div id="progress-chart-container">图表功能开发中</div>
-                 <div id="improvement-suggestions">
-                     <h4>提升建议</h4>
-                     <p id="suggestion-text">请先开始学习和测验以获取建议。</p>
-                 </div>
-            </section>
+      const playAudio = async (base64Audio) => {
+          try {
+              const ctx = getAudioContext();
+              if (ctx.state === 'suspended') {
+                  await ctx.resume();
+              }
+              const decodedBytes = decode(base64Audio);
+              const audioBuffer = await decodeAudioData(decodedBytes, ctx, 24000, 1);
 
-            <!-- Settings Module -->
-            <section id="settings-section" class="module-content">
-                 <h2>设置与反馈</h2>
-                 <div id="settings-container">
-                     <div class="settings-group">
-                         <h3>测验设置</h3>
-                         <label>每次测验题目数量: <input type="number" id="setting-quiz-count" min="5" max="50" value="10"></label>
-                         <label>复习提醒: <input type="checkbox" id="setting-notifications" checked> 启用</label>
-                     </div>
-                      <div class="settings-group">
-                          <h3>外观</h3>
-                          <label>主题: <select id="setting-theme"><option value="light">明亮</option><option value="dark" disabled>深色 (开发中)</option></select></label>
-                      </div>
-                      <div id="feedback-section" class="settings-group">
-                          <h3>反馈与建议</h3>
-                          <p>我们重视您的意见！请告诉我们您的想法或遇到的问题。</p>
-                          <form id="feedback-form"><textarea id="feedback-text" placeholder="请输入您的反馈..." required></textarea><button type="submit" class="primary">提交反馈</button></form>
-                      </div>
-                       <div class="settings-group">
-                           <h3>数据管理</h3>
-                           <button id="export-data-button" class="secondary" style="background-color: var(--info-color); color: white;">导出学习数据 (JSON)</button>
-                           <button id="reset-data-button" style="background-color: var(--danger-color); color: white; margin-left: 10px;">重置所有学习数据 (危险!)</button>
-                       </div>
-                 </div>
-            </section>
-        </main>
+              const source = ctx.createBufferSource();
+              source.buffer = audioBuffer;
+              source.connect(ctx.destination);
+              source.start();
+          } catch (error) {
+              console.error("播放音频失败:", error);
+          }
+      };
+      // --- END OF INLINED: utils/audioUtils.ts ---
 
-        <footer>
-             <p>基于 DeepSeek API 构建 | <strong style="color: var(--danger-color);">警告: API 密钥嵌入在前端代码中，请勿在公共环境部署!</strong></p>
-             <p>版本 1.1 (单文件/增强)</p>
-        </footer>
-    </div>
+      // --- START OF INLINED: services/geminiService.ts ---
+      const getAi = () => new GoogleGenAI({apiKey: process.env.API_KEY});
 
-    <!-- Embedded JavaScript -->
-    <script>
-        // --- Constants and Configuration ---
-        const API_KEY = 'sk-0c497ee28264453fa11c45fb862c7482'; // !!! SECURITY RISK !!! DO NOT EXPOSE PUBLICLY
-        const DEEPSEEK_API_URL = 'https://api.deepseek.com/chat/completions';
-        const APP_STATE_KEY = 'chineseAppProgressSingleFile_v1_1'; // Updated key
+      const checkExpression = async (expression) => {
+          const ai = getAi();
+          const model = 'gemini-2.5-flash';
 
-        // --- Default State ---
-        const defaultState = {
-            currentView: 'lookup-section', currentWordData: null, learnedWords: {}, lookupHistory: [],
-            quizStats: { correct: 0, incorrect: 0, history: [], streak: 0, lastQuizDate: null }, readingHistory: [],
-            settings: { quizCount: 10, notifications: true, theme: 'light' }
-        };
+          const prompt = `
+            你是一位顶尖的汉语语言学家和教育家，拥有多年对外汉语教学经验，尤其擅长帮助高级学习者突破瓶颈，使其语言表达能力达到准母语水平。
 
-        // --- State Management ---
-        let appState = {};
-        function loadState() { /* ... (same as previous version, checks APP_STATE_KEY) ... */
-            try {
-                const savedState = localStorage.getItem(APP_STATE_KEY);
-                appState = savedState ? { ...defaultState, ...JSON.parse(savedState) } : { ...defaultState };
-                if (savedState) {
-                    const parsed = JSON.parse(savedState);
-                    appState.settings = { ...defaultState.settings, ...(parsed.settings || {}) };
-                    appState.quizStats = { ...defaultState.quizStats, ...(parsed.quizStats || {}) };
-                    appState.learnedWords = parsed.learnedWords || {};
-                    appState.lookupHistory = parsed.lookupHistory || [];
-                }
-                if (typeof appState.learnedWords !== 'object' || appState.learnedWords === null) { appState.learnedWords = {}; }
-                console.log("状态已加载:", appState);
-            } catch (e) { console.error("加载状态失败:", e); appState = { ...defaultState }; }
+            请对以下用户提供的中文句子进行一次“深度诊断与优化”：
+            句子: "${expression}"
+
+            请严格按照以下步骤和JSON格式进行分析，所有解释都必须使用清晰、易懂的中文：
+
+            1.  **原句深度分析 (yuanju_fenxi)**:
+                -   对原句进行全面、深入的分析。请将分析清晰地分为以下几个方面：
+                -   **zongti (总体评价)**: 对句子的总体评价和核心问题总结。
+                -   **yufa (语法)**: (可选) 语法方面的具体分析和建议。
+                -   **cihui (词汇)**: (可选) 词汇选择和搭配方面的具体分析和建议。
+                -   **yuti (语体与风格)**: (可选) 语体、风格或文化语境方面的具体分析和建议。
+                -   即使句子语法完全正确，也要在“总体评价”中探讨其表达是否平淡、生硬，或者听起来像“教科书中文”。如果某个可选方面没有问题，可以省略该字段。
+
+            2.  **核心优化建议 (tishang_biaoda)**:
+                -   提供一个核心的“提升版”建议。这个版本应该在用词上更精妙、句式上更地道、表达上更优雅，但同时保持自然、不做作，是高水平母语者在相应情境下会使用的表达。
+                -   **biaoda**: 提升后的句子。
+                -   **pinyin**: 提升后句子的带声调拼音。
+                -   **fenxi**: 详细分析为什么这个版本更好，具体解释它在哪些方面（如词汇、结构、语气）超越了原句。
+
+            3.  **更多地道说法 (tihuan_biaoda)**:
+                -   提供一个包含2-3个其他地道表达的列表。这些表达可以适用于不同但相关的语境（例如，更口语化、更正式或带有不同情感色彩的说法）。
+                -   对于每一个说法：
+                    -   **biaoda**: 另一个地道的句子。
+                    -   **pinyin**: 该句子的拼音。
+                    -   **shuoming**: 简要说明该表达的特点、适用语境或与核心建议的细微差别。
+
+            请确保你的输出是严格符合以下定义的JSON对象。
+          `;
+
+          const responseSchema = {
+              type: Type.OBJECT,
+              properties: {
+                  yuanju_fenxi: { 
+                      type: Type.OBJECT, 
+                      description: "对用户原始句子的深入、详细的分类语言学分析。",
+                      properties: {
+                        zongti: { type: Type.STRING, description: "对句子的总体评价和核心问题总结。" },
+                        yufa: { type: Type.STRING, description: "语法方面的具体分析和建议。" },
+                        cihui: { type: Type.STRING, description: "词汇选择和搭配方面的具体分析和建议。" },
+                        yuti: { type: Type.STRING, description: "语体、风格或文化语境方面的具体分析和建议。" }
+                      },
+                      required: ["zongti"]
+                  },
+                  tishang_biaoda: {
+                      type: Type.OBJECT,
+                      description: "一个核心的、表达更优雅且地道的优化建议。",
+                      properties: {
+                          biaoda: { type: Type.STRING, description: "提升后的句子。" },
+                          pinyin: { type: Type.STRING, description: "提升后句子的带声调拼音。" },
+                          fenxi: { type: Type.STRING, description: "详细分析为什么这个提升版更好。" }
+                      },
+                      required: ["biaoda", "pinyin", "fenxi"]
+                  },
+                  tihuan_biaoda: {
+                      type: Type.ARRAY,
+                      description: "一个包含多个其他地道表达方式的列表。",
+                      items: {
+                          type: Type.OBJECT,
+                          properties: {
+                              biaoda: { type: Type.STRING, description: "另一个地道的表达。" },
+                              pinyin: { type: Type.STRING, description: "该表达的拼音。" },
+                              shuoming: { type: Type.STRING, description: "关于该表达适用语境或特点的简要说明。" }
+                          },
+                          required: ["biaoda", "pinyin", "shuoming"]
+                      }
+                  }
+              },
+              required: ["yuanju_fenxi", "tishang_biaoda", "tihuan_biaoda"],
+          };
+
+          try {
+              const result = await ai.models.generateContent({
+                  model: model,
+                  contents: prompt,
+                  config: {
+                      responseMimeType: "application/json",
+                      responseSchema: responseSchema,
+                  },
+              });
+
+              const jsonString = result.text.trim();
+              const parsedResult = JSON.parse(jsonString);
+              return { ...parsedResult, yuanju: expression };
+          } catch (error) {
+              console.error("检查表达时出错:", error);
+              throw new Error("无法检查表达，请重试。");
+          }
+      };
+
+      const getBreakdown = async (sentence) => {
+          const ai = getAi();
+          const model = 'gemini-2.5-flash';
+          const prompt = `
+              你是一位专业的、富有洞察力的汉语教师。请对以下句子进行全面的深度解析。
+              句子: "${sentence}"
+
+              你的任务分为两个部分：
+
+              第一部分：对整个句子进行综合分析。
+              1.  **拼音 (pinyin)**: 提供整个句子的标准拼音，带声调。
+              2.  **释义 (jieshi)**: 用清晰的中文解释整个句子的含义和语境。
+              3.  **相似例句 (liju)**: 提供一个结构相似或意思相近的例句，帮助理解用法。
+              4.  **补充信息 (buchong)**: （可选）提供关于语法结构、文化背景或表达方式的额外见解。
+
+              第二部分：将句子分解为其核心的词语或短语。
+              -   对于每一个核心词语/短语，请提供它的拼音、一个简单的中文解释，以及一个使用该词语/短语的例句。
+
+              请严格按照以下JSON格式返回结果，所有字段都必须使用中文。
+          `;
+
+          const responseSchema = {
+              type: Type.OBJECT,
+              properties: {
+                  sentenceAnalysis: {
+                      type: Type.OBJECT,
+                      properties: {
+                          pinyin: { type: Type.STRING, description: "整个句子的拼音。" },
+                          jieshi: { type: Type.STRING, description: "整个句子的中文释义。" },
+                          liju: { type: Type.STRING, description: "一个与原句结构或意思相似的例句。" },
+                          buchong: { type: Type.STRING, description: "关于句子语法或文化背景的补充信息。" },
+                      },
+                      required: ["pinyin", "jieshi", "liju"]
+                  },
+                  wordBreakdowns: {
+                      type: Type.ARRAY,
+                      items: {
+                          type: Type.OBJECT,
+                          properties: {
+                              ciyu: { type: Type.STRING, description: "核心词语或短语。" },
+                              pinyin: { type: Type.STRING, description: "该词语的拼音。" },
+                              jieshi: { type: Type.STRING, description: "对该词语的简单中文解释。" },
+                              liju: { type: Type.STRING, description: "一个使用该词语的例句。" },
+                          },
+                          required: ["ciyu", "pinyin", "jieshi", "liju"]
+                      }
+                  }
+              },
+              required: ["sentenceAnalysis", "wordBreakdowns"]
+          };
+
+          try {
+              const result = await ai.models.generateContent({
+                  model: model,
+                  contents: prompt,
+                  config: {
+                      responseMimeType: "application/json",
+                      responseSchema: responseSchema,
+                  },
+              });
+              const jsonString = result.text.trim();
+              const parsedResult = JSON.parse(jsonString);
+              parsedResult.sentenceAnalysis.yuanju = sentence;
+              return parsedResult;
+          } catch (error) {
+              console.error("解析句子时出错:", error);
+              throw new Error("无法解析句子，请重试。");
+          }
+      };
+
+      const getPronunciationAudio = async (text) => {
+          if (!text || text.trim() === '') {
+              throw new Error("Cannot generate audio for empty text.");
+          }
+          const ai = getAi();
+          try {
+              const response = await ai.models.generateContent({
+                  model: "gemini-2.5-flash-preview-tts",
+                  contents: { parts: [{ text: `朗读: ${text}` }] },
+                  config: {
+                      responseModalities: [Modality.AUDIO],
+                      speechConfig: {
+                          voiceConfig: {
+                            prebuiltVoiceConfig: { voiceName: 'Zephyr' }, 
+                          },
+                      },
+                  },
+              });
+
+              const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+              if (!base64Audio) {
+                  throw new Error("API未返回音频数据。");
+              }
+              return base64Audio;
+          } catch (error) {
+              console.error("生成发音音频时出错:", error);
+              throw new Error("未能生成音频。");
+          }
+      };
+      // --- END OF INLINED: services/geminiService.ts ---
+
+      // --- START OF INLINED: hooks/useStudyList.ts ---
+      const useStudyList = () => {
+          const [studyList, setStudyList] = useState([]);
+          const [loading, setLoading] = useState(true);
+          const STORAGE_KEY = 'studyList_zh';
+
+          useEffect(() => {
+              try {
+                  const items = localStorage.getItem(STORAGE_KEY);
+                  if (items) {
+                      setStudyList(JSON.parse(items));
+                  }
+              } catch (error) {
+                  console.error("从本地存储加载学习列表失败", error);
+              } finally {
+                  setLoading(false);
+              }
+          }, []);
+
+          const saveToLocalStorage = (items) => {
+              try {
+                  localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+              } catch (error) {
+                  console.error("保存学习列表到本地存储失败", error);
+              }
+          };
+
+          const addStudyItem = useCallback((biaoda, jieshi) => {
+              setStudyList(prevList => {
+                  const isDuplicate = prevList.some(item => item.biaoda.toLowerCase() === biaoda.toLowerCase());
+                  if (isDuplicate) {
+                      return prevList;
+                  }
+                  const newItem = {
+                      id: new Date().toISOString(),
+                      biaoda,
+                      jieshi,
+                      createdAt: new Date().toISOString(),
+                  };
+                  const updatedList = [newItem, ...prevList];
+                  saveToLocalStorage(updatedList);
+                  return updatedList;
+              });
+          }, []);
+          
+          const isExpressionInList = useCallback((biaoda) => {
+              return studyList.some(item => item.biaoda.toLowerCase() === biaoda.toLowerCase());
+          }, [studyList]);
+
+          const removeStudyItem = useCallback((id) => {
+              setStudyList(prevList => {
+                  const updatedList = prevList.filter(item => item.id !== id);
+                  saveToLocalStorage(updatedList);
+                  return updatedList;
+              });
+          }, []);
+
+          return { studyList, addStudyItem, removeStudyItem, isExpressionInList, loading };
+      };
+      // --- END OF INLINED: hooks/useStudyList.ts ---
+
+      // --- START OF INLINED: components/icons/*.tsx ---
+      const SpeakerIcon = () => (
+          React.createElement('svg', { xmlns: "http://www.w3.org/2000/svg", className: "h-5 w-5", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor" },
+              React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", strokeWidth: 2, d: "M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" })
+          )
+      );
+      const PlusIcon = ({ added = false }) => {
+        if (added) {
+          return (
+            React.createElement('svg', { xmlns: "http://www.w3.org/2000/svg", className: "h-5 w-5", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor" },
+              React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", strokeWidth: 2, d: "M5 13l4 4L19 7" })
+            )
+          );
         }
-        function saveState() { /* ... (same as previous version) ... */
-            try { localStorage.setItem(APP_STATE_KEY, JSON.stringify(appState)); }
-            catch (e) { console.error("保存状态失败:", e); alert("无法保存进度，localStorage 可能已满或被禁用。"); }
-        }
-        function getState() { return appState; }
-        function updateState(newState) { appState = { ...appState, ...newState }; saveState(); }
+        return (
+          React.createElement('svg', { xmlns: "http://www.w3.org/2000/svg", className: "h-5 w-5", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor" },
+            React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", strokeWidth: 2, d: "M12 6v6m0 0v6m0-6h6m-6 0H6" })
+          )
+        );
+      };
+      const Spinner = () => (
+        React.createElement('svg', { className: "animate-spin h-5 w-5 text-white", xmlns: "http://www.w3.org/2000/svg", fill: "none", viewBox: "0 0 24 24" },
+          React.createElement('circle', { className: "opacity-25", cx: "12", cy: "12", r: "10", stroke: "currentColor", strokeWidth: "4" }),
+          React.createElement('path', { className: "opacity-75", fill: "currentColor", d: "M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" })
+        )
+      );
+      const Pencil = () => (
+          React.createElement('svg', { xmlns: "http://www.w3.org/2000/svg", className: "h-6 w-6", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor", strokeWidth: 2 },
+              React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" })
+          )
+      );
+      const BookOpen = () => (
+          React.createElement('svg', { xmlns: "http://www.w3.org/2000/svg", className: "h-6 w-6", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor", strokeWidth: 2 },
+              React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" })
+          )
+      );
+      const Brain = () => (
+          React.createElement('svg', { xmlns: "http://www.w3.org/2000/svg", className: "h-6 w-6", fill: "none", viewBox: "0 0 24 24", stroke: "currentColor", strokeWidth: 2 },
+              React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "M9 8h6m-3 10v-6m-4 4h8a4 4 0 004-4V8a4 4 0 00-4-4H9a4 4 0 00-4 4v6a4 4 0 004 4zm-2-9a.5.5 0 01.5-.5h1a.5.5 0 01.5.5v1a.5.5 0 01-.5.5h-1a.5.5 0 01-.5-.5v-1zm5 0a.5.5 0 01.5-.5h1a.5.5 0 01.5.5v1a.5.5 0 01-.5.5h-1a.5.5 0 01-.5-.5v-1z" })
+          )
+      );
+      // --- END OF INLINED: components/icons/*.tsx ---
+      
+      // --- START OF INLINED: components/ExpressionChecker.tsx ---
+      const ExpressionChecker = ({ addStudyItem, isExpressionInList }) => {
+          const [input, setInput] = useState('');
+          const [result, setResult] = useState(null);
+          const [loading, setLoading] = useState(false);
+          const [error, setError] = useState(null);
+          const [audioLoading, setAudioLoading] = useState(null);
 
-        // --- API Interaction ---
-        async function callDeepSeekAPI(system_prompt, user_prompt, model = "deepseek-chat", max_tokens = 600, temperature = 0.6) { // Added parameters
-             console.log(`发送 API 请求 (Model: ${model}, Max Tokens: ${max_tokens})...`);
-             try {
-                 const response = await fetch(DEEPSEEK_API_URL, {
-                     method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${API_KEY}` }, // SECURITY RISK
-                     body: JSON.stringify({ model: model, messages: [{ "role": "system", "content": system_prompt },{ "role": "user", "content": user_prompt }], max_tokens: max_tokens, temperature: temperature })
-                 });
-                 if (!response.ok) { const errorData = await response.json().catch(() => ({})); throw new Error(`API 请求失败 (状态 ${response.status}). ${errorData.error?.message || '无法获取详细错误信息。'}`); }
-                 const data = await response.json();
-                 if (data.choices?.[0]?.message?.content) { return data.choices[0].message.content.trim(); }
-                 else { throw new Error("API 返回的响应格式不正确或内容为空。"); }
-             } catch (error) { console.error("调用 DeepSeek API 时出错:", error); throw error; }
-         }
+          const handleSubmit = async (e) => {
+              e.preventDefault();
+              if (!input.trim()) return;
+              setLoading(true);
+              setError(null);
+              setResult(null);
+              try {
+                  const checkResult = await checkExpression(input);
+                  setResult(checkResult);
+              } catch (err) {
+                  setError(err.message || '发生未知错误。');
+              } finally {
+                  setLoading(false);
+              }
+          };
 
-        // --- Formatting & Parsing ---
-        function formatExplanationHTML(text) { /* ... (same as previous version) ... */
-            let html = ''; const lines = text.split('\n').filter(line => line.trim() !== '');
-             lines.forEach(line => {
-                 if (line.startsWith('1. 拼音:')) { html += `<h3>${line.substring(0, line.indexOf(':')+1)}</h3><p>${line.substring(line.indexOf(':')+1).trim()}</p>`; }
-                 else if (line.startsWith('2. 意思:')) { html += `<h3>${line.substring(0, line.indexOf(':')+1)}</h3><p>${line.substring(line.indexOf(':')+1).trim()}</p>`; }
-                 else if (line.startsWith('3. 例子:')) { html += `<h3>${line.substring(0, line.indexOf(':')+1)}</h3><ul>`; }
-                 else if (line.startsWith('4. 句子解释:')) { if (html.endsWith('</ul>')) { } else { html += '</ul>'; } html += `<h3>${line.substring(0, line.indexOf(':')+1)}</h3><ul>`; }
-                 else if (line.startsWith('5. 深入理解:')) { if (html.endsWith('</ul>')) { } else { html += '</ul>'; } html += `<h3>${line.substring(0, line.indexOf(':')+1)}</h3><div>`; }
-                 else if (line.startsWith('- 示例句子') || line.startsWith('- [解释]:') || (line.startsWith('-') && html.includes('<ul>') && !html.includes('<div>'))) { html += `<li>${line.substring(line.indexOf('-')+1).trim()}</li>`; }
-                 else if (html.includes('深入理解:</h3><div>')) { if (!html.endsWith('</div>')) { html += `<p>${line.trim()}</p>`; } else { html = html.slice(0, -6); html += `<p>${line.trim()}</p></div>`; } }
-                 else if (html.endsWith('</ul>')) { html += `<li>${line.trim()}</li>`; }
-                 else { html += `<p>${line.trim()}</p>`; }
-             });
-             let openUl = (html.match(/<ul>/g) || []).length; let closeUl = (html.match(/<\/ul>/g) || []).length; html += '</ul>'.repeat(openUl - closeUl);
-             let openDiv = (html.match(/<div>/g) || []).length; let closeDiv = (html.match(/<\/div>/g) || []).length; html += '</div>'.repeat(openDiv - closeDiv);
-             html = html.replace(/<h3>.*?<\/h3>\s*<p>此项不适用<\/p>/gi, '<p><em>此部分不适用或无特别内容。</em></p>');
-             html = html.replace(/<h3>.*?<\/h3>\s*<div>\s*(<p>此项不适用<\/p>)?\s*<\/div>/gi, '<p><em>此部分不适用或无特别内容。</em></p>');
-             html = html.replace(/<h3>.*?<\/h3>\s*<ul>\s*<li>此项不适用<\/li>\s*<\/ul>/gi, '<p><em>此部分不适用或无特别内容。</em></p>');
-             html = html.replace(/<h3>.*?<\/h3>\s*<ul>\s*<\/ul>/gi, '');
-             return html || '<p>无法解析返回的内容格式。</p>';
-        }
-        function parseExplanationData(text, word) { /* ... (same as previous version) ... */
-            const data = { word: word, pinyin: '', definition: '', examples: [], deepDive: '', fullExplanation: text };
-             try {
-                 const pinyinMatch = text.match(/1\. 拼音:\s*(.*)/); if (pinyinMatch) data.pinyin = pinyinMatch[1].trim();
-                 const defMatch = text.match(/2\. 意思:\s*([\s\S]*?)(?=\n3\. 例子:|\n4\. 句子解释:|\n5\. 深入理解:|$)/); if (defMatch) data.definition = defMatch[1].trim();
-                 const exMatch = text.match(/3\. 例子:\s*([\s\S]*?)(?=\n4\. 句子解释:|\n5\. 深入理解:|$)/);
-                 if (exMatch) { data.examples = exMatch[1].split('\n').map(line => line.replace(/-\s*(示例句子\d*:)?\s*/, '').trim()).filter(line => line.length > 0); }
-                 const deepMatch = text.match(/5\. 深入理解:\s*([\s\S]*?)$/); if (deepMatch) data.deepDive = deepMatch[1].trim();
-             } catch(e) { console.error("Error parsing explanation text:", e); }
-             return data;
-        }
+          const handlePlayAudio = async (text) => {
+              setAudioLoading(text);
+              try {
+                  const audioData = await getPronunciationAudio(text);
+                  await playAudio(audioData);
+              } catch (error) {
+                  console.error("播放音频时出错", error);
+                  alert("未能播放音频。");
+              } finally {
+                  setAudioLoading(null);
+              }
+          };
+          
+          const AnalysisCategory = ({ title, content }) => {
+              if (!content) return null;
+              return React.createElement('div', null,
+                  React.createElement('h4', { className: "font-semibold text-slate-400 text-sm mb-1" }, title),
+                  React.createElement('p', { className: "text-slate-300 whitespace-pre-wrap leading-relaxed" }, content)
+              );
+          };
 
-        // --- SRS Logic ---
-        function calculateNextReview(srsData, quality) { /* ... (same as previous version) ... */
-            if (!srsData) return { nextReview: new Date().toISOString().split('T')[0], interval: 1, easeFactor: 2.5 };
-             let { interval = 1, easeFactor = 2.5 } = srsData;
-             if (quality < 3) { interval = 1; easeFactor = Math.max(1.3, easeFactor - 0.2); }
-             else { interval = (interval <= 1) ? 6 : Math.ceil(interval * easeFactor); easeFactor = easeFactor + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02)); easeFactor = Math.max(1.3, easeFactor); }
-             interval = Math.min(interval, 365); const now = new Date(); const nextReviewDate = new Date(now.setDate(now.getDate() + Math.ceil(interval)));
-             return { nextReview: nextReviewDate.toISOString().split('T')[0], interval: interval, easeFactor: easeFactor };
-        }
+          return React.createElement('div', { className: "p-4 md:p-6" },
+              React.createElement('h2', { className: "text-2xl font-bold mb-4 text-slate-100" }, "表达优化"),
+              React.createElement('p', { className: "mb-4 text-slate-400" }, "输入您不确定的句子或表达，AI将进行深度分析并提供母语级的优化建议。"),
+              React.createElement('form', { onSubmit: handleSubmit, className: "flex flex-col sm:flex-row gap-2 mb-6" },
+                  React.createElement('textarea', {
+                      value: input,
+                      onChange: (e) => setInput(e.target.value),
+                      placeholder: "例如：我的爱好是玩电脑游戏。",
+                      className: "flex-grow p-3 bg-slate-800 border border-slate-700 rounded-md focus:ring-2 focus:ring-violet-500 focus:outline-none transition text-slate-200 placeholder:text-slate-500",
+                      rows: 2
+                  }),
+                  React.createElement('button', {
+                      type: "submit",
+                      disabled: loading,
+                      className: "bg-violet-600 text-white px-6 py-3 rounded-md font-semibold hover:bg-violet-700 disabled:bg-violet-400 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+                  }, loading ? React.createElement(Spinner) : '分析')
+              ),
+              error && React.createElement('div', { className: "bg-red-900/50 border border-red-700 text-red-300 px-4 py-3 rounded-md mb-4", role: "alert" }, error),
+              result && React.createElement('div', { className: "space-y-8 animate-fadeIn" },
+                  React.createElement('div', { className: "bg-slate-800/50 p-6 rounded-lg shadow-lg border border-slate-700" },
+                      React.createElement('h3', { className: "font-bold text-lg text-slate-100 mb-4" }, "原句诊断报告"),
+                      React.createElement('p', { className: "text-slate-300 italic text-lg mb-4 bg-slate-900/50 p-3 rounded-md" }, `"${result.yuanju}"`),
+                      React.createElement('div', { className: "space-y-4" },
+                          React.createElement(AnalysisCategory, { title: "总体评价", content: result.yuanju_fenxi.zongti }),
+                          React.createElement(AnalysisCategory, { title: "语法分析", content: result.yuanju_fenxi.yufa }),
+                          React.createElement(AnalysisCategory, { title: "词汇建议", content: result.yuanju_fenxi.cihui }),
+                          React.createElement(AnalysisCategory, { title: "语体与风格", content: result.yuanju_fenxi.yuti })
+                      )
+                  ),
+                  React.createElement('div', { className: "bg-gradient-to-br from-slate-800 to-slate-900 p-6 rounded-lg shadow-lg border border-cyan-500/50" },
+                      React.createElement('h3', { className: "text-xl font-bold text-slate-100 mb-4" }, "核心优化建议"),
+                      React.createElement('div', { className: "flex items-center gap-4" },
+                          React.createElement('p', { className: "text-cyan-400 font-bold text-2xl tracking-wide" }, `"${result.tishang_biaoda.biaoda}"`),
+                          React.createElement('button', { onClick: () => handlePlayAudio(result.tishang_biaoda.biaoda), disabled: audioLoading === result.tishang_biaoda.biaoda, className: "text-slate-400 hover:text-cyan-400 transition-colors" },
+                              audioLoading === result.tishang_biaoda.biaoda ? React.createElement(Spinner) : React.createElement(SpeakerIcon)
+                          )
+                      ),
+                      React.createElement('p', { className: "text-violet-300 text-md font-mono mt-2" }, result.tishang_biaoda.pinyin),
+                      React.createElement('div', { className: "mt-4 pt-4 border-t border-slate-700" },
+                          React.createElement('h4', { className: "font-semibold text-slate-300 text-md mb-2" }, "优化解析"),
+                          React.createElement('p', { className: "text-slate-300 whitespace-pre-wrap leading-relaxed mb-6" }, result.tishang_biaoda.fenxi),
+                          React.createElement('button', { 
+                              onClick: () => addStudyItem(result.tishang_biaoda.biaoda, result.tishang_biaoda.fenxi),
+                              disabled: isExpressionInList(result.tishang_biaoda.biaoda),
+                              className: "flex items-center gap-2 px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 disabled:bg-slate-600 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-800 focus:ring-green-500 transition-colors"
+                          },
+                              React.createElement(PlusIcon, { added: isExpressionInList(result.tishang_biaoda.biaoda) }),
+                              isExpressionInList(result.tishang_biaoda.biaoda) ? '已收藏' : '收藏该表达'
+                          )
+                      )
+                  ),
+                  React.createElement('div', null,
+                      React.createElement('h3', { className: "text-xl font-bold mb-4 text-slate-100" }, "更多地道说法"),
+                      React.createElement('div', { className: "space-y-4" },
+                          result.tihuan_biaoda.map((alt, index) =>
+                              React.createElement('div', { key: index, className: "bg-slate-800/50 p-4 rounded-lg border border-slate-700" },
+                                  React.createElement('div', { className: "flex justify-between items-start gap-4" },
+                                      React.createElement('div', { className: "flex-grow" },
+                                          React.createElement('div', { className: "flex items-center gap-3 mb-1" },
+                                              React.createElement('p', { className: "text-slate-200 font-semibold text-lg" }, `"${alt.biaoda}"`),
+                                              React.createElement('button', { onClick: () => handlePlayAudio(alt.biaoda), disabled: audioLoading === alt.biaoda, className: "text-slate-400 hover:text-cyan-400 transition-colors" },
+                                                  audioLoading === alt.biaoda ? React.createElement(Spinner) : React.createElement(SpeakerIcon)
+                                              )
+                                          ),
+                                          React.createElement('p', { className: "text-violet-300 text-sm font-mono" }, alt.pinyin)
+                                      ),
+                                      React.createElement('button', { 
+                                          onClick: () => addStudyItem(alt.biaoda, alt.shuoming),
+                                          disabled: isExpressionInList(alt.biaoda),
+                                          className: "flex-shrink-0 flex items-center gap-2 px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-green-600/80 hover:bg-green-700 disabled:bg-slate-600 disabled:cursor-not-allowed transition-colors",
+                                          'aria-label': isExpressionInList(alt.biaoda) ? '已收藏' : '收藏'
+                                      },
+                                          React.createElement(PlusIcon, { added: isExpressionInList(alt.biaoda) }),
+                                          React.createElement('span', null, isExpressionInList(alt.biaoda) ? '已收藏' : '收藏')
+                                      )
+                                  ),
+                                  React.createElement('p', { className: "text-slate-400 mt-2 text-sm leading-relaxed border-t border-slate-700/50 pt-2" }, 
+                                      React.createElement('span', {className: 'font-semibold'}, "语境说明："), 
+                                      alt.shuoming)
+                              )
+                          )
+                      )
+                  )
+              )
+          );
+      };
+      // --- END OF INLINED: components/ExpressionChecker.tsx ---
 
-        // --- Utility Functions ---
-        function showLoading(containerElement) { containerElement.innerHTML = '<div class="loading-indicator">加载中...</div>'; containerElement.classList.remove('hidden'); }
-        function displayError(containerElement, message) { containerElement.innerHTML = `<div class="error-message">${message}</div>`; containerElement.classList.remove('hidden'); }
-        function displayInfo(containerElement, message) { containerElement.innerHTML = `<div class="info-message">${message}</div>`; containerElement.classList.remove('hidden'); }
+      // --- START OF INLINED: components/BreakdownTool.tsx ---
+      const BreakdownTool = ({ addStudyItem, isExpressionInList }) => {
+          const [input, setInput] = useState('');
+          const [analysisResult, setAnalysisResult] = useState(null);
+          const [loading, setLoading] = useState(false);
+          const [error, setError] = useState(null);
+          const [audioLoading, setAudioLoading] = useState(null);
 
-        // --- Navigation ---
-        function showModule(moduleId) { /* ... (same as previous version, calls updateProgressPage, resetQuizUI) ... */
-            console.log(`切换到模块: ${moduleId}`);
-            document.querySelectorAll('.module-content').forEach(module => module.classList.remove('active'));
-            document.querySelectorAll('.nav-button').forEach(button => button.classList.remove('active'));
-            const activeModule = document.getElementById(moduleId);
-            if (activeModule) {
-                activeModule.classList.add('active');
-                const activeButton = document.querySelector(`.nav-button[data-target="${moduleId}"]`);
-                if (activeButton) { activeButton.classList.add('active'); }
-                updateState({ currentView: moduleId });
-                 if (moduleId === 'progress-section') { updateProgressPage(); }
-                 if (moduleId === 'quiz-section') { resetQuizUI(); }
-                 if (moduleId === 'settings-section') { loadSettingsValues(); } // Load settings values when opening settings
-            } else {
-                console.error(`模块未找到: ${moduleId}, 显示默认模块`);
-                document.getElementById('lookup-section').classList.add('active');
-                document.querySelector('.nav-button[data-target="lookup-section"]').classList.add('active');
-                updateState({ currentView: 'lookup-section' });
-            }
-        }
+          const handleSubmit = async (e) => {
+              e.preventDefault();
+              if (!input.trim()) return;
+              setLoading(true);
+              setError(null);
+              setAnalysisResult(null);
+              try {
+                  const result = await getBreakdown(input);
+                  setAnalysisResult(result);
+              } catch (err) {
+                  setError(err.message || '发生未知错误。');
+              } finally {
+                  setLoading(false);
+              }
+          };
+          
+          const handlePlayAudio = async (text) => {
+              setAudioLoading(text);
+              try {
+                  const audioData = await getPronunciationAudio(text);
+                  await playAudio(audioData);
+              } catch (error) {
+                  console.error("播放音频时出错", error);
+                  alert("未能播放音频。");
+              } finally {
+                  setAudioLoading(null);
+              }
+          };
 
-        // --- Word Lookup Module Logic ---
-        function setupLookupModule() { /* ... (same as previous version) ... */
-            const lookupInput = document.getElementById('lookup-input');
-            const lookupButton = document.getElementById('lookup-button');
-            lookupButton.addEventListener('click', handleWordLookup);
-            lookupInput.addEventListener('keypress', (event) => { if (event.key === 'Enter') handleWordLookup(); });
-            renderLookupHistory();
-        }
-        async function handleWordLookup() { // *** MODIFIED PROMPT ***
-            const lookupInput = document.getElementById('lookup-input');
-             const lookupButton = document.getElementById('lookup-button');
-             const resultContainer = document.getElementById('lookup-result-container');
-             const word = lookupInput.value.trim();
-             if (!word) { displayInfo(resultContainer, "请输入要查询的词语。"); return; }
+          return React.createElement('div', { className: "p-4 md:p-6" },
+              React.createElement('h2', { className: "text-2xl font-bold mb-4 text-slate-100" }, "难句解析"),
+              React.createElement('p', { className: "mb-4 text-slate-400" }, "输入一个复杂的句子，AI会将其分解为核心词汇、拼音、释义和例句。"),
+              React.createElement('form', { onSubmit: handleSubmit, className: "flex flex-col sm:flex-row gap-2 mb-6" },
+                  React.createElement('input', {
+                      type: "text",
+                      value: input,
+                      onChange: (e) => setInput(e.target.value),
+                      placeholder: "例如：这个问题的解决方案需要我们从长计议。",
+                      className: "flex-grow p-3 bg-slate-800 border border-slate-700 rounded-md focus:ring-2 focus:ring-violet-500 focus:outline-none transition text-slate-200 placeholder:text-slate-500"
+                  }),
+                  React.createElement('button', {
+                      type: "submit",
+                      disabled: loading,
+                      className: "bg-violet-600 text-white px-6 py-3 rounded-md font-semibold hover:bg-violet-700 disabled:bg-violet-400 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+                  }, loading ? React.createElement(Spinner) : '解析')
+              ),
+              error && React.createElement('div', { className: "bg-red-900/50 border border-red-700 text-red-300 px-4 py-3 rounded-md mb-4", role: "alert" }, error),
+              analysisResult && React.createElement('div', { className: "space-y-8 animate-fadeIn" },
+                  React.createElement('div', { className: "bg-slate-800/50 p-6 rounded-lg shadow-lg border border-slate-700" },
+                      React.createElement('h3', { className: "text-xl font-bold mb-4 text-slate-100" }, "整句分析"),
+                      React.createElement('div', { className: "mb-4" },
+                          React.createElement('h4', { className: "font-semibold text-slate-400 text-sm" }, "您输入的句子"),
+                          React.createElement('div', { className: "flex items-center gap-4 mt-1" },
+                              React.createElement('p', { className: "text-cyan-400 font-semibold text-lg" }, `"${analysisResult.sentenceAnalysis.yuanju}"`),
+                              React.createElement('button', { 
+                                  onClick: () => handlePlayAudio(analysisResult.sentenceAnalysis.yuanju), 
+                                  disabled: audioLoading === analysisResult.sentenceAnalysis.yuanju, 
+                                  className: "text-slate-400 hover:text-cyan-400 transition-colors",
+                                  'aria-label': "播放原句"
+                              }, audioLoading === analysisResult.sentenceAnalysis.yuanju ? React.createElement(Spinner) : React.createElement(SpeakerIcon))
+                          ),
+                          React.createElement('p', { className: "text-violet-300 text-md font-mono mt-1" }, analysisResult.sentenceAnalysis.pinyin)
+                      ),
+                      React.createElement('div', { className: "space-y-4" },
+                          React.createElement('div', null,
+                              React.createElement('h4', { className: "font-semibold text-slate-400 text-sm" }, "释义"),
+                              React.createElement('p', { className: "text-slate-300 mt-1 whitespace-pre-wrap leading-relaxed" }, analysisResult.sentenceAnalysis.jieshi)
+                          ),
+                          React.createElement('div', null,
+                              React.createElement('h4', { className: "font-semibold text-slate-400 text-sm" }, "相似例句"),
+                              React.createElement('p', { className: "text-slate-400 mt-1 italic" }, `"${analysisResult.sentenceAnalysis.liju}"`)
+                          ),
+                          analysisResult.sentenceAnalysis.buchong && React.createElement('div', null,
+                              React.createElement('h4', { className: "font-semibold text-slate-400 text-sm" }, "补充信息"),
+                              React.createElement('p', { className: "text-slate-300 mt-1 whitespace-pre-wrap leading-relaxed" }, analysisResult.sentenceAnalysis.buchong)
+                          )
+                      ),
+                       React.createElement('div', { className: "mt-6 pt-4 border-t border-slate-700/50" },
+                           React.createElement('button', {
+                              onClick: () => addStudyItem(analysisResult.sentenceAnalysis.yuanju, analysisResult.sentenceAnalysis.jieshi),
+                              disabled: isExpressionInList(analysisResult.sentenceAnalysis.yuanju),
+                              className: "flex items-center gap-2 px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 disabled:bg-slate-600 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-800 focus:ring-green-500 transition-colors"
+                          },
+                              React.createElement(PlusIcon, { added: isExpressionInList(analysisResult.sentenceAnalysis.yuanju) }),
+                              isExpressionInList(analysisResult.sentenceAnalysis.yuanju) ? '整句已收藏' : '收藏整句'
+                          )
+                      )
+                  ),
+                  analysisResult.wordBreakdowns && analysisResult.wordBreakdowns.length > 0 && React.createElement('div', null,
+                      React.createElement('h3', { className: "text-xl font-bold mb-4 text-slate-100" }, "核心词语解析"),
+                      React.createElement('div', { className: "grid grid-cols-1 md:grid-cols-2 gap-4" },
+                          analysisResult.wordBreakdowns.map((item, index) =>
+                              React.createElement('div', { key: index, className: "bg-slate-800/50 p-4 rounded-lg shadow-lg border border-slate-700 flex flex-col" },
+                                  React.createElement('div', { className: "flex justify-between items-start mb-3" },
+                                      React.createElement('div', null,
+                                          React.createElement('div', { className: "flex items-center gap-3" },
+                                              React.createElement('h4', { className: "text-lg font-bold text-cyan-400" }, item.ciyu),
+                                              React.createElement('button', { onClick: () => handlePlayAudio(item.ciyu), disabled: audioLoading === item.ciyu, className: "text-slate-400 hover:text-cyan-400 transition-colors" },
+                                                  audioLoading === item.ciyu ? React.createElement(Spinner) : React.createElement(SpeakerIcon)
+                                              )
+                                          ),
+                                          React.createElement('p', { className: "text-sm text-violet-300 font-mono" }, item.pinyin)
+                                      ),
+                                      React.createElement('button', {
+                                          onClick: () => addStudyItem(item.ciyu, item.jieshi),
+                                          disabled: isExpressionInList(item.ciyu),
+                                          className: "flex-shrink-0 flex items-center gap-2 px-3 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700 disabled:bg-slate-600 disabled:cursor-not-allowed transition-colors",
+                                          'aria-label': isExpressionInList(item.ciyu) ? '已收藏' : '收藏'
+                                      },
+                                          React.createElement(PlusIcon, { added: isExpressionInList(item.ciyu) })
+                                      )
+                                  ),
+                                  React.createElement('div', { className: "flex-grow space-y-2" },
+                                      React.createElement('p', { className: "text-slate-300 text-sm" }, 
+                                          React.createElement('span', { className: "font-semibold text-slate-400" }, "释义："), 
+                                          ` ${item.jieshi}`),
+                                      React.createElement('p', { className: "text-slate-400 text-sm italic" }, 
+                                          React.createElement('span', { className: "font-semibold not-italic text-slate-500" }, "例句："), 
+                                          ` "${item.liju}"`)
+                                  )
+                              )
+                          )
+                      )
+                  )
+              )
+          );
+      };
+      // --- END OF INLINED: components/BreakdownTool.tsx ---
 
-             lookupButton.disabled = true; lookupButton.textContent = "查询中...";
-             showLoading(resultContainer);
-             addLookupHistory(word);
+      // --- START OF INLINED: components/IntelligentReview.tsx ---
+      const IntelligentReview = ({ studyList, removeStudyItem }) => {
+          const [isQuizMode, setIsQuizMode] = useState(false);
+          const [shuffledList, setShuffledList] = useState([]);
+          const [currentIndex, setCurrentIndex] = useState(0);
+          const [isFlipped, setIsFlipped] = useState(false);
+          const [audioLoading, setAudioLoading] = useState(false);
+          
+          const shuffleArray = (array) => {
+              const newArray = [...array];
+              for (let i = newArray.length - 1; i > 0; i--) {
+                  const j = Math.floor(Math.random() * (i + 1));
+                  [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+              }
+              return newArray;
+          };
 
-             // *** UPDATED SYSTEM PROMPT FOR 4 EXAMPLES ***
-             const system_prompt = `You are a Chinese language tutor helping a learner learn Chinese USING Chinese. Respond ONLY in Simplified Mandarin Chinese characters and the requested Pinyin. ABSOLUTELY NO ENGLISH (except for this instruction).
-Please explain the Chinese word/phrase provided by the user.
-Provide the response using ONLY these exact headings and formats where possible:
-1. 拼音: (Provide accurate Pinyin with tone marks ONLY)
-2. 分开：（reakup each sentence word by word provied with pinin concise definition using Mandarin vocabulary up to HSK 4-5 level)
-2. 意思: (Provide a concise definition using Mandarin vocabulary up to HSK 5 level)
-3. 例子: (Provide EXACTLY 4 distinct, useful example sentences using the word/phrase. Use bullet points. Use vocabulary and grammar up to HSK 5 level for clarity.)
-4. 句子解释: (For EACH of the 4 example sentences above, explain the overall meaning of the sentence using bullet points in the format "- [解释]: ...")
-5. 深入理解: (Provide deeper insights such as nuances, usage tips, cultural context, or common mistakes. Present as natural paragraphs or bullet points.)
+          const startQuiz = () => {
+              if (studyList.length > 0) {
+                  setShuffledList(shuffleArray(studyList));
+                  setCurrentIndex(0);
+                  setIsFlipped(false);
+                  setIsQuizMode(true);
+              }
+          };
+          
+          const endQuiz = () => setIsQuizMode(false);
 
-IMPORTANT: Use ONLY Simplified Mandarin Chinese for the explanation. Ensure EXACTLY 4 examples and their corresponding explanations are provided under sections 3 and 4. If a section isn't applicable, state "此项不适用" or provide related info.`;
-             const user_prompt = `请解释这个词语或短语: "${word}"`;
+          const handleNextCard = () => {
+              if (currentIndex < shuffledList.length - 1) {
+                  setCurrentIndex(prev => {
+                      setTimeout(() => setIsFlipped(false), 300);
+                      return prev + 1;
+                  });
+              } else {
+                  endQuiz();
+                  alert("复习完成！");
+              }
+          };
 
-             try {
-                 // Increase max_tokens slightly for potentially longer response with 4 examples
-                 const explanationText = await callDeepSeekAPI(system_prompt, user_prompt, "deepseek-chat", 800, 0.6);
-                 const formattedHTML = formatExplanationHTML(explanationText);
-                 resultContainer.innerHTML = `<div id="lookup-result">${formattedHTML}</div>`;
-                 const parsedData = parseExplanationData(explanationText, word);
-                 updateState({ currentWordData: parsedData });
+          const handlePlayAudio = async (text) => {
+              setAudioLoading(true);
+              try {
+                  const audioData = await getPronunciationAudio(text);
+                  await playAudio(audioData);
+              } catch (error) {
+                  console.error("播放音频时出错", error);
+                  alert("未能播放音频。");
+              } finally {
+                  setAudioLoading(false);
+              }
+          };
 
-                 if (!getState().learnedWords[word]) {
-                    const saveButton = document.createElement('button');
-                    saveButton.id = 'save-word-button'; saveButton.textContent = `添加到学习列表 (${word})`;
-                    saveButton.onclick = () => saveCurrentWord(); resultContainer.appendChild(saveButton);
-                 } else {
-                     const alreadySaved = document.createElement('p'); alreadySaved.textContent = `“${word}” 已在您的学习列表中。`;
-                     alreadySaved.style.cssText = 'margin-top: 15px; color: var(--success-color); font-style: italic;'; // Added style
-                     resultContainer.appendChild(alreadySaved);
-                 }
-                 resultContainer.classList.remove('hidden');
-             } catch (error) { displayError(resultContainer, `查询失败: ${error.message}`); }
-             finally { lookupButton.disabled = false; lookupButton.textContent = "查询"; lookupInput.select(); }
-        }
-        function addLookupHistory(word) { /* ... (same as previous version) ... */
-            let history = getState().lookupHistory || []; history = history.filter(item => item !== word); history.unshift(word);
-            if (history.length > 15) { history.pop(); } updateState({ lookupHistory: history }); renderLookupHistory();
-        }
-        function renderLookupHistory() { /* ... (same as previous version) ... */
-            const historyList = document.getElementById('history-list'); const history = getState().lookupHistory || [];
-            historyList.innerHTML = ''; if (history.length === 0) { historyList.innerHTML = '<li>暂无查询历史</li>'; return; }
-            history.forEach(word => { const li = document.createElement('li'); const button = document.createElement('button'); button.textContent = word; button.onclick = () => { document.getElementById('lookup-input').value = word; handleWordLookup(); }; li.appendChild(button); historyList.appendChild(li); });
-        }
-        function saveCurrentWord() { /* ... (same as previous version) ... */
-            const currentData = getState().currentWordData;
-            if (currentData && currentData.word) { if (!getState().learnedWords[currentData.word]) { addLearnedWord(currentData); alert(`“${currentData.word}” 已添加到学习列表！`); const saveButton = document.getElementById('save-word-button'); if (saveButton) { saveButton.textContent = `“${currentData.word}” 已添加`; saveButton.disabled = true; } } else { alert(`“${currentData.word}” 已在您的学习列表中。`); } }
-            else { alert(`无法保存，未找到当前查询的单词数据。`); }
-        }
-        function addLearnedWord(wordData) { /* ... (same as previous version) ... */
-            if (!wordData || !wordData.word) return; const word = wordData.word; if (!appState.learnedWords[word]) { appState.learnedWords[word] = { pinyin: wordData.pinyin || '', definition: wordData.definition || '', examples: wordData.examples || [], srsLevel: 0, nextReview: new Date().toISOString().split('T')[0], interval: 1, easeFactor: 2.5, addedDate: new Date().toISOString().split('T')[0], notes: '', fullExplanation: wordData.fullExplanation || '' }; console.log(`单词 "${word}" 已添加到学习列表`); saveState(); } else { console.log(`单词 "${word}" 已存在于学习列表`); }
-        }
+          const currentItem = isQuizMode ? shuffledList[currentIndex] : null;
 
-        // --- Quiz Module Logic ---
-        let currentQuizWords = []; let currentQuestionIndex = 0; let correctAnswers = 0; let sessionWordUpdates = {}; let quizActive = false;
-        function setupQuizModule() { /* ... (same as previous version) ... */
-            const startButton = document.getElementById('start-quiz-button'); const nextButton = document.getElementById('next-question-button'); const doneButton = document.getElementById('quiz-done-button');
-            startButton.addEventListener('click', startQuiz); nextButton.addEventListener('click', loadNextQuestion); doneButton.addEventListener('click', resetQuizUI);
-        }
-        function resetQuizUI() { /* ... (same as previous version) ... */
-            document.getElementById('quiz-setup').classList.remove('hidden'); document.getElementById('quiz-area').classList.add('hidden'); document.getElementById('quiz-controls').classList.add('hidden'); document.getElementById('quiz-summary').classList.add('hidden'); document.getElementById('start-quiz-button').disabled = false; quizActive = false;
-        }
-        function startQuiz() { /* ... (same as previous version, uses settings.quizCount) ... */
-            const learnedWords = getState().learnedWords; const today = new Date().toISOString().split('T')[0];
-            const dueWords = Object.keys(learnedWords).filter(key => learnedWords[key].nextReview && learnedWords[key].nextReview <= today );
-            if (dueWords.length === 0) { alert("太棒了！今天没有需要复习的单词。\n您可以先去学习新单词，或稍后再试。"); return; }
-            const quizCount = getState().settings.quizCount || 10;
-            currentQuizWords = dueWords.sort(() => 0.5 - Math.random()).slice(0, quizCount);
-            if (currentQuizWords.length === 0) { alert("未能准备测验题目。"); return; }
-            console.log(`开始测验，题目数量: ${currentQuizWords.length}`, currentQuizWords);
-            currentQuestionIndex = 0; correctAnswers = 0; sessionWordUpdates = {}; quizActive = true;
-            document.getElementById('quiz-setup').classList.add('hidden'); document.getElementById('quiz-area').classList.remove('hidden'); document.getElementById('quiz-controls').classList.add('hidden'); document.getElementById('quiz-summary').classList.add('hidden');
-            loadQuestion(currentQuestionIndex);
-        }
-        function loadQuestion(index) { /* ... (same as previous version) ... */
-            const feedbackEl = document.getElementById('quiz-feedback'); const optionsEl = document.getElementById('quiz-options'); const questionEl = document.getElementById('quiz-question');
-            feedbackEl.classList.add('hidden'); feedbackEl.textContent = ''; optionsEl.innerHTML = '';
-            const wordKey = currentQuizWords[index]; const wordData = getState().learnedWords[wordKey];
-            if (!wordData) { console.error(`无法加载单词数据: ${wordKey}`); loadNextQuestion(); return; }
-            questionEl.textContent = `(${index + 1}/${currentQuizWords.length}) “${wordKey}” 的意思是？`;
-            const options = generateDefinitionOptions(wordKey, wordData.definition);
-            options.forEach(option => { const button = document.createElement('button'); button.textContent = option.text; button.onclick = () => handleAnswer(option.isCorrect, wordKey, button, optionsEl); optionsEl.appendChild(button); });
-        }
-        function generateDefinitionOptions(correctWord, correctDef) { /* ... (same as previous version) ... */
-            const learnedWords = getState().learnedWords; if (!correctDef || correctDef.trim() === '') correctDef = `(未找到 '${correctWord}' 的定义)`;
-            const otherWordsData = Object.entries(learnedWords).filter(([key, data]) => key !== correctWord && data.definition && data.definition.trim() !== '');
-            let wrongDefs = otherWordsData.map(([key, data]) => data.definition).filter(def => def !== correctDef); wrongDefs = [...new Set(wrongDefs)]; wrongDefs = wrongDefs.sort(() => 0.5 - Math.random()).slice(0, 3);
-            const options = [{ text: correctDef, isCorrect: true }]; wrongDefs.forEach(def => options.push({ text: def, isCorrect: false }));
-            while (options.length < 3 && options.length > 1) { options.push({ text: `(选项 ${options.length + 1})`, isCorrect: false }); }
-            return options.sort(() => 0.5 - Math.random());
-        }
-        function handleAnswer(isCorrect, wordKey, clickedButton, optionsContainer) { /* ... (same as previous version) ... */
-            if (!quizActive) return; optionsContainer.querySelectorAll('button').forEach(btn => btn.disabled = true);
-            const feedbackEl = document.getElementById('quiz-feedback'); feedbackEl.classList.remove('hidden', 'feedback-correct', 'feedback-incorrect');
-            optionsContainer.querySelectorAll('button').forEach(btn => { const btnIsCorrect = btn.textContent === getState().learnedWords[wordKey]?.definition; if (btn === clickedButton) { btn.classList.add(isCorrect ? 'correct' : 'incorrect'); } else if (btnIsCorrect && !isCorrect) { btn.classList.add('correct'); } });
-            const srsQuality = isCorrect ? 4 : 1; if (isCorrect) { feedbackEl.textContent = "正确！"; feedbackEl.classList.add('feedback-correct'); correctAnswers++; } else { feedbackEl.textContent = `错误。`; feedbackEl.classList.add('feedback-incorrect'); }
-            sessionWordUpdates[wordKey] = srsQuality; document.getElementById('quiz-controls').classList.remove('hidden');
-        }
-        function loadNextQuestion() { /* ... (same as previous version) ... */
-            if (!quizActive) return; currentQuestionIndex++; document.getElementById('quiz-controls').classList.add('hidden');
-            if (currentQuestionIndex < currentQuizWords.length) { loadQuestion(currentQuestionIndex); } else { endQuiz(); }
-        }
-        function endQuiz() { /* ... (same as previous version) ... */
-            quizActive = false; document.getElementById('quiz-area').classList.add('hidden'); document.getElementById('quiz-controls').classList.add('hidden');
-            const summaryEl = document.getElementById('quiz-summary'); summaryEl.classList.remove('hidden');
-            const totalQuestions = currentQuizWords.length; const accuracy = totalQuestions > 0 ? ((correctAnswers / totalQuestions) * 100).toFixed(0) : 0;
-            document.getElementById('summary-text').textContent = `测验完成！正确率: ${correctAnswers} / ${totalQuestions} (${accuracy}%)`;
-            applySrsUpdates(); updateQuizStatsHistory(correctAnswers, totalQuestions);
-        }
-        function applySrsUpdates() { /* ... (same as previous version) ... */
-            let state = getState(); let updated = false; const today = new Date().toISOString().split('T')[0];
-            for (const wordKey in sessionWordUpdates) { if (state.learnedWords[wordKey]) { const quality = sessionWordUpdates[wordKey]; const currentSrsData = { interval: state.learnedWords[wordKey].interval, easeFactor: state.learnedWords[wordKey].easeFactor }; const newSrsData = calculateNextReview(currentSrsData, quality); state.learnedWords[wordKey].nextReview = newSrsData.nextReview; state.learnedWords[wordKey].interval = newSrsData.interval; state.learnedWords[wordKey].easeFactor = newSrsData.easeFactor; state.learnedWords[wordKey].srsLevel = (state.learnedWords[wordKey].srsLevel || 0) + (quality >= 3 ? 1 : -1); state.learnedWords[wordKey].lastReviewDate = today; updated = true; } }
-            if (updated) { updateState(state); } sessionWordUpdates = {};
-        }
-        function updateQuizStatsHistory(correct, total) { /* ... (same as previous version) ... */
-            let stats = getState().quizStats; stats.correct += correct; stats.incorrect += (total - correct); stats.history = stats.history || []; stats.history.push({ date: new Date().toISOString(), correct: correct, total: total }); if(stats.history.length > 50) { stats.history.shift(); }
-            const today = new Date().toISOString().split('T')[0]; if (stats.lastQuizDate === today) { } else { const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1); if (stats.lastQuizDate === yesterday.toISOString().split('T')[0]) { stats.streak = (stats.streak || 0) + 1; } else { stats.streak = 1; } stats.lastQuizDate = today; }
-            updateState({ quizStats: stats });
-        }
+          if (studyList.length === 0) {
+              return React.createElement('div', { className: "p-4 md:p-6 text-center" },
+                  React.createElement('h2', { className: "text-2xl font-bold mb-4 text-slate-100" }, "智能复习"),
+                  React.createElement('p', { className: "text-slate-400" }, "你的生词本是空的。快去添加一些表达或词语来开始复习吧！")
+              );
+          }
+          
+          if (isQuizMode && currentItem) {
+              return React.createElement('div', { className: "p-4 md:p-6 flex flex-col items-center" },
+                  React.createElement('h2', { className: "text-2xl font-bold mb-4 text-slate-100" }, "智能复习"),
+                  React.createElement('div', { className: "w-full max-w-lg mb-4 text-slate-400 text-center" },
+                      React.createElement('p', null, `第 ${currentIndex + 1} / ${shuffledList.length} 张卡片`)
+                  ),
+                  React.createElement('div', { className: `perspective w-full max-w-lg h-64 mb-6 ${isFlipped ? 'card-flipped' : ''}` },
+                      React.createElement('div', { className: "card-inner" },
+                          React.createElement('div', { className: "card-front bg-slate-800 border border-slate-700 rounded-lg shadow-lg" },
+                              React.createElement('p', { className: "text-slate-400 mb-2 text-sm" }, "这是什么表达？"),
+                              React.createElement('p', { className: "text-xl text-slate-200" }, currentItem.jieshi)
+                          ),
+                          React.createElement('div', { className: "card-back bg-slate-800 border border-cyan-500/50 rounded-lg shadow-lg" },
+                              React.createElement('p', { className: "text-3xl font-bold text-cyan-400 mb-2" }, currentItem.biaoda),
+                              React.createElement('button', { onClick: () => handlePlayAudio(currentItem.biaoda), disabled: audioLoading, className: "text-slate-400 hover:text-cyan-400 mx-auto transition-colors" },
+                                  audioLoading ? React.createElement(Spinner) : React.createElement(SpeakerIcon)
+                              )
+                          )
+                      )
+                  ),
+                  React.createElement('div', { className: "flex gap-4" },
+                      React.createElement('button', { onClick: endQuiz, className: "px-6 py-2 rounded-md bg-slate-600 hover:bg-slate-700 transition-colors" }, "结束复习"),
+                      !isFlipped ? 
+                          React.createElement('button', { onClick: () => setIsFlipped(true), className: "px-6 py-2 rounded-md bg-violet-600 hover:bg-violet-700 transition-colors font-semibold" }, "显示答案") :
+                          React.createElement('button', { onClick: handleNextCard, className: "px-6 py-2 rounded-md bg-green-600 hover:bg-green-700 transition-colors font-semibold" }, "下一个")
+                  )
+              );
+          }
 
+          return React.createElement('div', { className: "p-4 md:p-6" },
+              React.createElement('h2', { className: "text-2xl font-bold mb-4 text-slate-100" }, "智能复习"),
+              React.createElement('div', { className: "text-center mb-6" },
+                   React.createElement('button', { onClick: startQuiz, className: "bg-violet-600 text-white px-8 py-3 rounded-lg font-bold text-lg hover:bg-violet-700 transition-transform hover:scale-105" },
+                      `开始复习 (${studyList.length} 个词条)`
+                  )
+              ),
+              React.createElement('h3', { className: "text-xl font-semibold mb-3 text-slate-300" }, "我的生词本"),
+              React.createElement('div', { className: "space-y-3" },
+                  studyList.map((item) =>
+                      React.createElement('div', { key: item.id, className: "bg-slate-800/50 p-4 rounded-lg shadow-md border border-slate-700/50" },
+                          React.createElement('div', { className: "flex justify-between items-start" },
+                              React.createElement('div', null,
+                                  React.createElement('h4', { className: "text-lg font-bold text-cyan-400" }, item.biaoda),
+                                  React.createElement('p', { className: "mt-1 text-slate-300 text-sm leading-relaxed" }, item.jieshi)
+                              ),
+                               React.createElement('button', {
+                                  onClick: () => removeStudyItem(item.id),
+                                  className: "text-sm text-red-500 hover:text-red-400 font-semibold transition-colors flex-shrink-0 ml-4"
+                              }, "移除")
+                          )
+                      )
+                  )
+              )
+          );
+      };
+      // --- END OF INLINED: components/IntelligentReview.tsx ---
 
-        // --- Reading Module Logic ---
-        function setupReadingModule() { // *** MODIFIED ***
-            const generateButton = document.getElementById('generate-story-button');
-            const passageArea = document.getElementById('reading-passage-area');
-            const popup = document.getElementById('definition-popup');
+      // --- START OF INLINED: App.tsx ---
+      const App = () => {
+          const [activeTab, setActiveTab] = useState('checker');
+          const { studyList, addStudyItem, removeStudyItem, isExpressionInList, loading } = useStudyList();
 
-            generateButton.addEventListener('click', generateStory); // Changed listener function
+          const renderContent = () => {
+              switch (activeTab) {
+                  case 'checker':
+                      return React.createElement(ExpressionChecker, { addStudyItem, isExpressionInList });
+                  case 'breakdown':
+                      return React.createElement(BreakdownTool, { addStudyItem, isExpressionInList });
+                  case 'review':
+                      return React.createElement(IntelligentReview, { studyList, removeStudyItem });
+                  default:
+                      return null;
+              }
+          };
+          
+          const NavButton = ({tab, label, children}) => {
+              const isActive = activeTab === tab;
+              return (
+                  React.createElement('button', {
+                      onClick: () => setActiveTab(tab),
+                      className: `flex flex-col items-center justify-center p-2 rounded-lg transition-colors w-28 ${isActive ? 'bg-violet-700 text-white' : 'text-slate-400 hover:bg-slate-700'}`
+                  },
+                      children,
+                      React.createElement('span', { className: "text-xs mt-1" }, label)
+                  )
+              )
+          };
 
-            document.addEventListener('click', (event) => { // Hide popup listener
-                if (!popup.classList.contains('hidden') && !popup.contains(event.target) && !event.target.classList.contains('highlight')) {
-                    popup.classList.add('hidden');
-                }
-            }, true);
-        }
+          return (
+              React.createElement('div', { className: "flex flex-col h-screen bg-gradient-to-b from-slate-900 to-slate-950 font-sans text-slate-200" },
+                  React.createElement('header', { className: "bg-slate-900/50 backdrop-blur-sm border-b border-slate-700/50 p-4 sticky top-0 z-10" },
+                      React.createElement('h1', { className: "text-3xl font-bold text-center text-slate-100" }, "汉语语境通 AI")
+                  ),
+                  React.createElement('main', { className: "flex-grow overflow-y-auto" },
+                      React.createElement('div', { className: "max-w-4xl mx-auto" },
+                          renderContent()
+                      )
+                  ),
+                  React.createElement('footer', { className: "bg-slate-900/80 backdrop-blur-sm border-t border-slate-700/50 p-2 sticky bottom-0" },
+                      React.createElement('nav', { className: "flex justify-around max-w-md mx-auto" },
+                          React.createElement(NavButton, { tab: "checker", label: "表达优化" }, React.createElement(Pencil)),
+                          React.createElement(NavButton, { tab: "breakdown", label: "难句解析" }, React.createElement(BookOpen)),
+                          React.createElement(NavButton, { tab: "review", label: "智能复习" }, React.createElement(Brain))
+                      )
+                  )
+              )
+          );
+      };
+      // --- END OF INLINED: App.tsx ---
 
-        async function generateStory() { // *** NEW FUNCTION ***
-             const passageArea = document.getElementById('reading-passage-area');
-             const generateButton = document.getElementById('generate-story-button');
-             generateButton.disabled = true; generateButton.textContent = "生成中...";
-             showLoading(passageArea);
-
-             const learnedWordsMap = getState().learnedWords || {};
-             const learnedWordsList = Object.keys(learnedWordsMap);
-
-             if (learnedWordsList.length === 0) {
-                 displayInfo(passageArea, "您的学习列表是空的。请先通过“首页”查词并添加一些单词，然后才能生成相关的故事。");
-                 generateButton.disabled = false; generateButton.textContent = "生成新故事";
-                 return;
-             }
-
-             // Select words to include (e.g., 1 to 5 words, prioritize recent/due?)
-             // Simple approach: take a random sample
-             const wordsToInclude = learnedWordsList
-                                     .sort(() => 0.5 - Math.random()) // Shuffle
-                                     .slice(0, Math.min(learnedWordsList.length, 5)); // Take up to 5
-
-             console.log("尝试生成包含以下单词的故事:", wordsToInclude);
-
-             const system_prompt = `You are a helpful assistant creating stories in **Simplified Chinese** for a language learner (around 5000 most common Mandarin words level) focused on spoken language style. The story should be engaging and naturally incorporate the provided Chinese words. Keep the story concise (around 50-1000 words). Respond ONLY with the story text, nothing else.`;
-             const user_prompt = `Please write a short story in Simplified Chinese for a language learner, naturally including these words if possible: ${wordsToInclude.join('、')}`;
-
-             try {
-                 // Use a model good for creative text, maybe adjust tokens/temp
-                 const storyText = await callDeepSeekAPI(system_prompt, user_prompt, "deepseek-chat", 250, 0.8);
-
-                 // Highlight the learned words within the generated story
-                 const highlightedStory = highlightLearnedWords(storyText, wordsToInclude);
-
-                 passageArea.innerHTML = `<div class="reading-passage">${highlightedStory}</div>`;
-                 addHighlightListeners(passageArea); // Make highlights clickable
-
-             } catch (error) {
-                 console.error("生成故事失败:", error);
-                 displayError(passageArea, `生成故事时出错: ${error.message}`);
-             } finally {
-                 generateButton.disabled = false; generateButton.textContent = "生成新故事";
-             }
-         }
-
-         function highlightLearnedWords(text, wordsToHighlight) { // *** NEW HELPER ***
-            let highlightedText = text;
-             // Sort words by length descending to match longer words first (e.g., "图书馆" before "图书")
-             wordsToHighlight.sort((a, b) => b.length - a.length);
-
-             wordsToHighlight.forEach(word => {
-                 // Use regex to find the word, avoiding replacement within existing HTML tags
-                 // This regex is basic and might need refinement for complex cases.
-                 // It looks for the word not preceded by ">" and not followed by "<" (simple check for outside tags)
-                 // Added check to ensure it's not already inside a highlight span
-                 const regex = new RegExp(`(?<!<span class="highlight">)${escapeRegExp(word)}(?!<\/span>)`, 'g');
-                 highlightedText = highlightedText.replace(regex, `<span class="highlight">${word}</span>`);
-             });
-            return highlightedText;
-         }
-
-        function escapeRegExp(string) { // Helper for regex construction
-             return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& means the whole matched string
-         }
-
-        function addHighlightListeners(container) { /* ... (same as previous version) ... */
-             container.querySelectorAll('.highlight').forEach(span => {
-                 span.addEventListener('click', (event) => { event.stopPropagation(); const word = span.textContent; showDefinitionPopup(word, event); });
-             });
-         }
-        function showDefinitionPopup(word, event) { /* ... (same as previous version) ... */
-            const popup = document.getElementById('definition-popup'); const wordData = getState().learnedWords[word]; let content = `<strong>${word}</strong><br>`;
-            if(wordData) { content += `拼音: ${wordData.pinyin || 'N/A'}<br>意思: ${wordData.definition || 'N/A'}`; } else { content += `(未在学习列表中找到)`; } popup.innerHTML = content;
-            const rect = event.target.getBoundingClientRect(); popup.style.left = `${window.scrollX + rect.left}px`; popup.style.top = `${window.scrollY + rect.bottom + 5}px`; popup.classList.remove('hidden');
-         }
-
-
-        // --- Progress Module Logic ---
-        function setupProgressModule() { /* ... (same as previous version) ... */ }
-        function updateProgressPage() { /* ... (same as previous version) ... */
-            console.log("更新进度页面..."); const state = getState(); const learnedWords = state.learnedWords || {}; const stats = state.quizStats || defaultState.quizStats;
-            const totalWords = Object.keys(learnedWords).length; const today = new Date().toISOString().split('T')[0]; const reviewsDue = Object.values(learnedWords).filter(w => w.nextReview && w.nextReview <= today).length; const totalQuizzed = stats.correct + stats.incorrect; const overallAccuracy = totalQuizzed > 0 ? ((stats.correct / totalQuizzed) * 100).toFixed(0) + '%' : 'N/A'; const streak = stats.streak || 0;
-            document.getElementById('stat-total-words').textContent = totalWords; document.getElementById('stat-today-reviews').textContent = reviewsDue; document.getElementById('stat-quiz-accuracy').textContent = overallAccuracy; document.getElementById('stat-streak').textContent = `${streak} 天`;
-            let suggestion = "开始学习和测验来追踪您的进度吧！"; if (totalWords > 0 && reviewsDue > 5) { suggestion = `今天有 ${reviewsDue} 个单词需要复习，安排时间完成吧！`; } else if (totalQuizzed > 10 && parseFloat(overallAccuracy) < 75) { suggestion = "您的测验准确率有提升空间，多复习易错词汇。"; } else if (streak > 3) { suggestion = `保持 ${streak} 天的学习连胜，真棒！继续加油！`; } document.getElementById('suggestion-text').textContent = suggestion;
-        }
-
-
-        // --- Settings Module Logic ---
-        function setupSettingsModule() { /* ... (same as previous version) ... */
-            // Load settings values initially
-            loadSettingsValues();
-            // Add listeners for settings changes
-             document.getElementById('setting-quiz-count').addEventListener('change', (e) => updateSetting('quizCount', parseInt(e.target.value)));
-             document.getElementById('setting-notifications').addEventListener('change', (e) => updateSetting('notifications', e.target.checked));
-             document.getElementById('setting-theme').addEventListener('change', (e) => updateSetting('theme', e.target.value));
-             document.getElementById('feedback-form').addEventListener('submit', handleFeedbackSubmit);
-             document.getElementById('export-data-button').addEventListener('click', exportData);
-             document.getElementById('reset-data-button').addEventListener('click', resetData);
-        }
-        function loadSettingsValues() { // *** NEW Function ***
-             const settings = getState().settings;
-             document.getElementById('setting-quiz-count').value = settings.quizCount || 10;
-             document.getElementById('setting-notifications').checked = settings.notifications !== false;
-             document.getElementById('setting-theme').value = settings.theme || 'light';
-         }
-        function updateSetting(key, value) { /* ... (same as previous version) ... */
-            let settings = getState().settings; settings[key] = value; updateState({ settings: settings }); console.log(`设置已更新: ${key}=${value}`); if (key === 'theme') applyTheme(value);
-        }
-        function handleFeedbackSubmit(event) { /* ... (same as previous version) ... */
-            event.preventDefault(); const text = document.getElementById('feedback-text').value; if (!text.trim()) { alert("请输入反馈内容。"); return; } console.log("提交反馈:", text); alert("感谢您的反馈！"); document.getElementById('feedback-text').value = '';
-        }
-        function exportData() { /* ... (same as previous version) ... */
-            try { const dataStr = JSON.stringify(getState(), null, 2); const blob = new Blob([dataStr], { type: "application/json" }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `chinese_learning_data_${new Date().toISOString().split('T')[0]}.json`; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url); alert("数据已导出为 JSON 文件。"); } catch (e) { console.error("导出数据失败:", e); alert("导出数据失败。"); }
-        }
-        function resetData() { /* ... (same as previous version) ... */
-            if (confirm("警告！这将清除您所有的学习进度、单词列表和设置。\n此操作无法撤销！\n\n您确定要重置所有数据吗？")) { localStorage.removeItem(APP_STATE_KEY); appState = { ...defaultState }; alert("所有数据已重置。页面将重新加载。"); window.location.reload(); }
-        }
-        function applyTheme(themeName) { /* ... (same as previous version) ... */
-             console.log(`应用主题: ${themeName}`); if (themeName === 'dark') { alert("深色主题正在开发中。"); document.getElementById('setting-theme').value = 'light'; updateSetting('theme', 'light'); }
-        }
-
-
-        // --- Initialization ---
-        document.addEventListener('DOMContentLoaded', () => { /* ... (same as previous version) ... */
-            console.log("应用初始化 (单文件增强版 v1.1)..."); loadState();
-            document.querySelectorAll('.nav-button').forEach(button => { button.addEventListener('click', () => { const targetId = button.getAttribute('data-target'); showModule(targetId); }); });
-            setupLookupModule(); setupQuizModule(); setupReadingModule(); setupProgressModule(); setupSettingsModule();
-            showModule(getState().currentView || 'lookup-section'); applyTheme(getState().settings.theme || 'light');
-            console.log("初始化完成。");
-        });
-
+      // --- START OF INLINED: index.tsx ---
+      const rootElement = document.getElementById('root');
+      if (!rootElement) {
+        throw new Error("Could not find root element to mount to");
+      }
+      const root = ReactDOM.createRoot(rootElement);
+      root.render(
+        React.createElement(React.StrictMode, null, React.createElement(App))
+      );
+      // --- END OF INLINED: index.tsx ---
     </script>
-</body>
+  </body>
 </html>
+
